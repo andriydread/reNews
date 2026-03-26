@@ -3,6 +3,10 @@ from datetime import datetime
 
 import feedparser
 import httpx
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.article import Article
 
 
 class FeedManager:
@@ -23,7 +27,7 @@ class FeedManager:
             articles = []
             for entry in parsed_data.entries:
                 published = None
-                if entry.ger("published_parsed"):
+                if entry.get("published_parsed"):
                     published = datetime.fromtimestamp(
                         time.mktime(entry.published_parsed)
                     )
@@ -36,10 +40,7 @@ class FeedManager:
                     }
                 )
 
-            return {
-                "feed_title": parsed_data.feed.get("title", "Unknown"),
-                "articles": articles,
-            }
+            return articles
 
         except httpx.HTTPStatusError as e:
             print(f"Server error {e.response.status_code} while fetching {url}")
@@ -48,7 +49,19 @@ class FeedManager:
             print(f"Unexpected error: {e}")
             return None
 
+    async def save_articles_to_db(
+        self, session: AsyncSession, feed_id: int, articles: list[dict]
+    ):
+        for article in articles:
+            to_insert = insert(Article).values(
+                title=article["title"],
+                link=article["link"],
+                published_at=article["published_date"],
+                feed_id=feed_id,
+            )
 
-# To test it (manually):
-manager = FeedManager()
-print(manager.fetch_feed_data("https://news.ycombinator.com/rss"))
+            to_insert = to_insert.on_conflict_do_nothing(index_elements=["link"])
+
+            await session.execute(to_insert)
+
+        await session.commit()
