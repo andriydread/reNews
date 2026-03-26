@@ -1,3 +1,6 @@
+import time
+from datetime import datetime
+
 import feedparser
 import httpx
 
@@ -6,27 +9,30 @@ class FeedManager:
     def __init__(self):
         self.headers = {"User-Agent": "reNews-Aggregator/1.0"}
 
-    def fetch_feed_data(self, url: str):
-        """
-        Fetches the RSS/Atom content from a URL and parses it.
-        """
+    async def fetch_feed_data(self, url: str):
         try:
-            response = httpx.get(url, timeout=10.0, headers=self.headers)
+            async with httpx.AsyncClient(headers=self.headers) as client:
+                response = await client.get(url, timeout=10.0)
+                response.raise_for_status()
 
-            if response.status_code == httpx.codes.OK:
-                parsed_data = feedparser.parse(response.text)
-            # response.raise_for_status() should use this one?
+            parsed_data = feedparser.parse(response.text)
 
             if parsed_data.bozo:
                 return None
 
             articles = []
             for entry in parsed_data.entries:
+                published = None
+                if entry.ger("published_parsed"):
+                    published = datetime.fromtimestamp(
+                        time.mktime(entry.published_parsed)
+                    )
+
                 articles.append(
                     {
                         "title": entry.get("title", "No Title"),
-                        "link": entry.get("link", "No Link"),
-                        "published_date": entry.get("published_parsed", "No Date"),
+                        "link": entry.get("link"),
+                        "published_date": published,
                     }
                 )
 
