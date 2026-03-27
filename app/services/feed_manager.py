@@ -6,7 +6,7 @@ import httpx
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.article import Article
+from app.models.models import Article
 
 
 class FeedManager:
