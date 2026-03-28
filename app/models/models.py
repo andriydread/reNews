@@ -11,13 +11,23 @@ class Base(DeclarativeBase):
 
 
 class ArticleCategory(str, enum.Enum):
+    TECHNOLOGY = "Technology & Innovation"
     AI = "AI & Machine Learning"
-    DEV = "Software Engineering"
-    SEC = "Cybersecurity"
-    CLOUD = "DevOps & Cloud"
-    HARDWARE = "Hardware & Electronics"
-    BUSINESS = "Business & Startups"
-    SCIENCE = "Science & Research"
+    SCIENCE = "Science & Space"
+
+    POLITICS = "Politics & Government"
+    BUSINESS = "Business & Economy"
+    SOCIETY = "Society & Culture"
+    CRIME = "Crime & Justice"
+
+    HEALTH = "Health & Medicine"
+    ENVIRONMENT = "Environment & Nature"
+    EDUCATION = "Education & Learning"
+
+    ART = "Arts & Entertainment"
+    LIFESTYLE = "Lifestyle & Leisure"
+    SPORTS = "Sports & Recreation"
+
     OTHER = "Other"
 
 
