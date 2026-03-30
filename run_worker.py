@@ -25,14 +25,13 @@ async def process_feeds(session, feed_manager):
     feeds = result.scalars().all()
 
     # Insert Hacker News feed if the database is empty
+
     if not feeds:
-        print("No feeds found in database. Using standart RSS feed - Hacker News")
-        if not feeds:
-            print("No feeds found in database. Using test RSS feed - Hacker News")
-            hn_feed = Feed(title="Hacker News", url="https://news.ycombinator.com/rss")
-            session.add(hn_feed)
-            await session.commit()
-            feeds = [hn_feed]
+        print("No feeds found in database. Using test RSS feed - Hacker News")
+        hn_feed = Feed(title="Hacker News", url="https://news.ycombinator.com/rss")
+        session.add(hn_feed)
+        await session.commit()
+        feeds = [hn_feed]
 
     for feed in feeds:
         print(f"Fetching feed: {feed.title} ({feed.url})")
@@ -122,3 +121,7 @@ async def main():
         except Exception as e:
             print(f"Unexpected Error: {e}")
             sys.exit(1)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
