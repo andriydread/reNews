@@ -12,6 +12,8 @@ AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def get_db():
+    """Asynchronous database session for future FastAPI requests"""
+
     async with AsyncSessionLocal() as session:
         try:
             yield session

@@ -1,18 +1,17 @@
-import asyncio  # noqa , for testing only, delete later
+import os
 
 import httpx
 from bs4 import BeautifulSoup
-from dotenv import load_dotenv  # delete later
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
 from app.models.models import ArticleCategory
 
-load_dotenv()  # delete later
-
 
 class AIAnalysisResult(BaseModel):
+    """Schema to defining the exact JSON structure we expect from the AI"""
+
     summary: str = Field(description="A 3-5 sentence summary of the article.")
     category: ArticleCategory = Field(
         description="The most appropriate category from the predefined list."
@@ -26,13 +25,18 @@ class AIAnalysisResult(BaseModel):
 
 
 class AIProcessor:
+    """Service responsible for downloading articles and querying the Gemini AI API."""
+
     def __init__(self):
+
         self.client = genai.Client()
+        self.model_name = os.getenv("GEMINI_MODEL")
 
-        self.model_name = "gemini-3.1-flash-lite-preview"
+    async def extract_text_from_url(self, url: str):
+        """Visits the provided URL, strips away HTML formatting, and returns raw text"""
 
-    async def extract_text_from_url(self, url: str) -> str | None:
         try:
+            # Headers to mask as browser
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
@@ -45,6 +49,7 @@ class AIProcessor:
 
             soup = BeautifulSoup(response.text, "html.parser")
 
+            # Destroy elements that contain useless text
             for element in soup(
                 ["script", "style", "nav", "footer", "header", "aside"]
             ):
@@ -52,13 +57,15 @@ class AIProcessor:
 
             text = soup.get_text(separator=" ", strip=True)
 
+            # Return only the first 15,000 characters to save input tokens
             return text[:15000]
 
         except Exception as e:
             print(f"Failed to scrape {url}: {e}")
             return None
 
-    async def analyze_article(self, title: str, text: str) -> AIAnalysisResult | None:
+    async def analyze_article(self, title: str, text: str):
+        """Sends the article text to Gemini and forces it to return structured JSON"""
 
         prompt = f"""
         Analyze the following article.
@@ -69,13 +76,15 @@ class AIProcessor:
         """
 
         try:
+            # Asynchronous requests
             response = await self.client.aio.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
+                    # Force AI to reply in JSON only
                     response_mime_type="application/json",
                     response_schema=AIAnalysisResult,
-                    temperature=0.2,
+                    temperature=0.2,  # Low temperature for analytical, not creative response
                 ),
             )
 
@@ -85,20 +94,3 @@ class AIProcessor:
         except Exception as e:
             print(f"AI Processing failed: {e}")
             return None
-
-
-# async def test():
-#     ai = AIProcessor()
-#     text = await ai.extract_text_from_url(
-#         "https://en.wikipedia.org/wiki/Artificial_intelligence"
-#     )
-#     if text:
-#         result = await ai.analyze_article("Artificial Intelligence", text)
-#         print(f"Summary: {result.summary}")
-#         print(f"Category: {result.category}")
-#         print(f"Score: {result.score}/10")
-#         print(f"Language: {result.language}")
-
-
-# if __name__ == "__main__":
-#     asyncio.run(test())

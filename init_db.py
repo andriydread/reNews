@@ -3,19 +3,21 @@ import asyncio
 from app.core.database import engine
 from app.models.models import Base
 
+# [!] [+] [✓] to use later
+
 
 async def init_models():
+    """Initializes the PostgreSQL database schema"""
 
     async with engine.begin() as conn:
-        print(
-            "Dropping existing tables, only for development, comment after use and remove later"
-        )
+        # ONLY FOR DEVELOPMENT, DELTE LATER
+        print("Dropping existing tables")
         await conn.run_sync(Base.metadata.drop_all)
 
-        print("[+] Creating tables if not exist.")
+        print("Creating tables from SQLAlchemy models")
         await conn.run_sync(Base.metadata.create_all)
 
-        print("[->] Done")
+        print("Database initialization complete")
 
 
 if __name__ == "__main__":
