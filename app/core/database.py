@@ -5,11 +5,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 load_dotenv()
 
-PG_USER = os.getenv("POSTGRES_USER", "postgres")
-PG_PASS = os.getenv("POSTGRES_PASSWORD", "postgres")
-PG_HOST = os.getenv("POSTGRES_HOST", "localhost")
-PG_PORT = os.getenv("POSTGRES_PORT", "5433")
-PG_DB = os.getenv("POSTGRES_DB", "postgres")
+PG_USER = os.getenv("POSTGRES_USER")
+PG_PASS = os.getenv("POSTGRES_PASSWORD")
+PG_HOST = os.getenv("POSTGRES_HOST")
+PG_PORT = os.getenv("POSTGRES_PORT")
+PG_DB = os.getenv("POSTGRES_DB")
 
 DATABASE_URL = f"postgresql+asyncpg://{PG_USER}:{PG_PASS}@{PG_HOST}:{PG_PORT}/{PG_DB}"
 
