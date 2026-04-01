@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>reNews - AI Aggregator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <script defer src="/static/js/main.js?v=2"></script>
+  </head>
+  <body class="bg-stone-50 text-gray-800 font-sans antialiased">
+    <!-- Navbar -->
+    <nav class="bg-slate-800 text-white shadow-md">
+      <div
+        class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center"
+      >
+        <h1 class="text-2xl font-bold tracking-tight">reNews 🧠</h1>
+        <a
+          href="/admin"
+          class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition"
+          >Admin Panel</a
+        >
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+      <!-- Filters -->
+      <div
+        class="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center justify-between"
+      >
+        <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+          <select
+            id="categoryFilter"
+            class="border rounded px-3 py-2 w-full md:w-48 bg-gray-50"
+          >
+            <option value="">All Categories</option>
+
+            <optgroup label="Tech & Science">
+              <option value="AI & Machine Learning">
+                AI & Machine Learning
+              </option>
+              <option value="Technology & Innovation">
+                Technology & Innovation
+              </option>
+              <option value="Science & Space">Science & Space</option>
+            </optgroup>
+
+            <optgroup label="Politics and People">
+              <option value="Business & Economy">Business & Economy</option>
+              <option value="Politics & Government">
+                Politics & Government
+              </option>
+              <option value="Society & Culture">Society & Culture</option>
+              <option value="Crime & Justice">Crime & Justice</option>
+            </optgroup>
+
+            <optgroup label="World">
+              <option value="Health & Medicine">Health & Medicine</option>
+              <option value="Environment & Nature">Environment & Nature</option>
+              <option value="Education & Learning">Education & Learning</option>
+            </optgroup>
+
+            <optgroup label="Lifestyle">
+              <option value="Arts & Entertainment">Arts & Entertainment</option>
+              <option value="Lifestyle & Leisure">Lifestyle & Leisure</option>
+              <option value="Sports & Recreation">Sports & Recreation</option>
+            </optgroup>
+
+            <optgroup label="Other">
+              <option value="Other">Other</option>
+            </optgroup>
+          </select>
+          <select
+            id="scoreFilter"
+            class="border rounded px-3 py-2 w-full md:w-48 bg-stone-50"
+          >
+            <option value="">Any AI Score</option>
+            <option value="10">Score:10</option>
+            <option value="9">Score: 9+</option>
+            <option value="8">Score: 8+</option>
+            <option value="7">Score: 7+</option>
+            <option value="6">Score: 6+</option>
+            <option value="5">Score: 5+</option>
+            <option value="4">Score: 4+</option>
+            <option value="3">Score: 3+</option>
+            <option value="2">Score: 2+</option>
+            <option value="1">Score: 1+</option>
+          </select>
+        </div>
+        <select
+          id="sizeFilter"
+          class="border rounded px-3 py-2 w-full md:w-auto bg-stone-50"
+        >
+          <option value="10">10 per page</option>
+          <option value="20">20 per page</option>
+          <option value="50">50 per page</option>
+        </select>
+      </div>
+
+      <!-- UI States & Grid -->
+      <div
+        id="loadingState"
+        class="hidden flex justify-center items-center py-20"
+      >
+        <div
+          class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"
+        ></div>
+      </div>
+      <div id="emptyState" class="hidden text-center py-20 text-gray-500">
+        <p class="text-xl">No articles found matching these filters.</p>
+        <button
+          onclick="resetFilters()"
+          class="mt-4 text-blue-600 hover:underline"
+        >
+          Clear Filters
+        </button>
+      </div>
+      <div
+        id="articlesGrid"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      ></div>
+
+      <!-- Pagination -->
+      <div
+        class="mt-8 flex justify-between items-center bg-white p-4 rounded-lg shadow-sm"
+      >
+        <button
+          id="prevBtn"
+          class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+          disabled
+        >
+          Previous
+        </button>
+        <span id="pageInfo" class="text-gray-600 font-medium">Page 1</span>
+        <button
+          id="nextBtn"
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700. text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    </main>
+  </body>
+</html>

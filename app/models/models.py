@@ -46,7 +46,11 @@ class Feed(Base):
     url: Mapped[str] = mapped_column(String(1000), unique=True)
 
     # Python Relationships
-    articles: Mapped[list["Article"]] = relationship(back_populates="feed")
+    articles: Mapped[list["Article"]] = relationship(
+        back_populates="feed",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class Article(Base):
@@ -60,7 +64,7 @@ class Article(Base):
     link: Mapped[str] = mapped_column(String(1000), unique=True)
 
     # Foreign Keys
-    feed_id: Mapped[int] = mapped_column(ForeignKey("feeds.id"))
+    feed_id: Mapped[int] = mapped_column(ForeignKey("feeds.id", ondelete="CASCADE"))
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -69,7 +73,9 @@ class Article(Base):
     # Python Relationships
     feed: Mapped["Feed"] = relationship(back_populates="articles")
     analysis: Mapped[Optional["ArticleAnalysis"]] = relationship(
-        back_populates="article", cascade="all, delete-orphan"
+        back_populates="article",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
@@ -82,7 +88,9 @@ class ArticleAnalysis(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # Foreign Keys
-    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), unique=True)
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("articles.id", ondelete="CASCADE"), unique=True
+    )
 
     # AI Columns
     summary: Mapped[str] = mapped_column(Text)

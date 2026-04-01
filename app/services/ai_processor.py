@@ -10,9 +10,11 @@ from app.models.models import ArticleCategory
 
 
 class AIAnalysisResult(BaseModel):
-    """Schema to defining the exact JSON structure we expect from the AI"""
+    """Schema to defining the exact JSON structure expected from the AI"""
 
-    summary: str = Field(description="A 3-5 sentence summary of the article.")
+    summary: str = Field(
+        description="A 1-2 sentence (200 character max) summary of the article."
+    )
     category: ArticleCategory = Field(
         description="The most appropriate category from the predefined list."
     )
@@ -84,7 +86,8 @@ class AIProcessor:
                     # Force AI to reply in JSON only
                     response_mime_type="application/json",
                     response_schema=AIAnalysisResult,
-                    temperature=0.2,  # Low temperature for analytical, not creative response
+                    # Temperature is low for analytical, not creative response
+                    temperature=0.2,
                 ),
             )
 

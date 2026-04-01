@@ -25,7 +25,6 @@ async def process_feeds(session, feed_manager):
     feeds = result.scalars().all()
 
     # Insert Hacker News feed if the database is empty
-
     if not feeds:
         print("No feeds found in database. Using test RSS feed - Hacker News")
         hn_feed = Feed(title="Hacker News", url="https://news.ycombinator.com/rss")

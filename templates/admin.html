@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>reNews - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <script defer src="/static/js/admin.js"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-800 font-sans antialiased">
+    <!-- Admin Navbar -->
+    <nav class="bg-gray-800 text-white shadow-md">
+      <div
+        class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center"
+      >
+        <h1 class="text-2xl font-bold tracking-tight">reNews Admin ⚙️</h1>
+        <a
+          href="/"
+          class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition"
+          >&larr; Back to News</a
+        >
+      </div>
+    </nav>
+
+    <main
+      class="max-w-4xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-2 gap-8"
+    >
+      <!-- Left Side: Add Feed Form -->
+      <div
+        class="bg-white p-6 rounded-xl shadow-md border border-gray-100 h-fit"
+      >
+        <h2 class="text-xl font-bold mb-4">Add New RSS Feed</h2>
+
+        <!-- Alert Box (Hidden by default) -->
+        <div
+          id="alertBox"
+          class="hidden mb-4 px-4 py-3 rounded relative text-sm"
+        ></div>
+
+        <form id="feedForm" class="flex flex-col gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Feed Title</label
+            >
+            <input
+              type="text"
+              id="feedTitle"
+              placeholder="e.g. Hacker News"
+              required
+              class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >RSS/Atom URL</label
+            >
+            <input
+              type="url"
+              id="feedUrl"
+              placeholder="https://news.ycombinator.com/rss"
+              required
+              class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            type="submit"
+            id="submitBtn"
+            class="mt-2 bg-indigo-600 hover:bg-indigo-700. text-white font-medium py-2 rounded hover:bg-blue-700 transition flex justify-center items-center"
+          >
+            <span>Add Feed</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Right Side: Existing Feeds List -->
+      <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+        <h2 class="text-xl font-bold mb-4">Tracked Feeds</h2>
+
+        <div
+          id="loadingFeeds"
+          class="flex justify-center items-center py-10 hidden"
+        >
+          <div
+            class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8"
+          ></div>
+        </div>
+
+        <ul id="feedList" class="divide-y divide-gray-100">
+          <!-- JavaScript will inject feeds here -->
+        </ul>
+      </div>
+    </main>
+  </body>
+</html>

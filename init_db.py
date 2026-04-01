@@ -10,9 +10,10 @@ async def init_models():
     """Initializes the PostgreSQL database schema"""
 
     async with engine.begin() as conn:
-        # ONLY FOR DEVELOPMENT, DELTE LATER
+        # -----ONLY FOR DEVELOPMENT, DELTE LATER
         print("Dropping existing tables")
         await conn.run_sync(Base.metadata.drop_all)
+        # -----
 
         print("Creating tables from SQLAlchemy models")
         await conn.run_sync(Base.metadata.create_all)
