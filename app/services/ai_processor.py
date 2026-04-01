@@ -1,7 +1,7 @@
 import os
 
 import httpx
-from bs4 import BeautifulSoup
+import trafilatura
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
@@ -49,18 +49,13 @@ class AIProcessor:
                 response = await client.get(url, timeout=15.0)
                 response.raise_for_status()
 
-            soup = BeautifulSoup(response.text, "html.parser")
+            text = trafilatura.extract(response.text)
 
-            # Destroy elements that contain useless text
-            for element in soup(
-                ["script", "style", "nav", "footer", "header", "aside"]
-            ):
-                element.decompose()
-
-            text = soup.get_text(separator=" ", strip=True)
-
-            # Return only the first 15,000 characters to save input tokens
-            return text[:15000]
+            if text:
+                return text[:15000]
+            else:
+                print(f"Trafilatura could not find main article text for {url}.")
+                return None
 
         except Exception as e:
             print(f"Failed to scrape {url}: {e}")

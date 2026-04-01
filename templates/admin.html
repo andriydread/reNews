@@ -20,6 +20,20 @@
           class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition"
           >&larr; Back to News</a
         >
+        <!-- Put this in the top right next to "Back to News" -->
+        <button
+          onclick="logout()"
+          class="text-sm bg-red-600 hover:bg-red-500 px-3 py-1 rounded transition ml-2"
+        >
+          Logout
+        </button>
+
+        <script>
+          async function logout() {
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/login";
+          }
+        </script>
       </div>
     </nav>
 

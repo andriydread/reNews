@@ -76,9 +76,18 @@ async def process_ai_analysis(session, ai_processor):
         print(f"Processing: {article.title[:50]}")
         text = await ai_processor.extract_text_from_url(article.link)
 
-        # If no text skip article
         if not text:
-            print(f"Error extracting text from {article.link}. Skipping.")
+            print(f"Error extracting text from {article.link}. Marking as failed.")
+            failed_analysis = ArticleAnalysis(
+                article_id=article.id,
+                summary="Content could not be extracted (paywall, bot-protection, or unsupported format).",
+                category="Other",
+                score=0,
+                language="unknown",
+                model_used="none",
+            )
+            session.add(failed_analysis)
+            await session.commit()
             continue
 
         ai_result = await ai_processor.analyze_article(article.title, text)
@@ -103,7 +112,7 @@ async def process_ai_analysis(session, ai_processor):
         await asyncio.sleep(1)
 
 
-async def main():
+async def worker_run():
     """Main entrypoint to start worker"""
     feed_manager = FeedManager()
     ai_processor = AIProcessor()
@@ -123,4 +132,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(worker_run())

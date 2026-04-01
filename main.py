@@ -1,10 +1,13 @@
 import os
 import secrets
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 
+import jwt
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -15,48 +18,118 @@ from sqlalchemy.orm import selectinload
 from app.api.schemas import FeedCreate, FeedResponse, PaginatedArticlesResponse
 from app.core.database import get_db
 from app.models.models import Article, ArticleAnalysis, ArticleCategory, Feed
+from run_worker import worker_run
+
+
+# Scheduler
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle manager for FastAPI"""
+
+    scheduler = AsyncIOScheduler()
+    # Run worker every 30 minutes
+    scheduler.add_job(worker_run, "interval", minutes=30)
+    # Run worker at startup
+    scheduler.add_job(worker_run)
+
+    scheduler.start()
+    print("Scheduler Started")
+
+    yield
+
+    scheduler.shutdown()
+    print("Scheduler stopprd")
+
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+IS_PRODUCTION = ENVIRONMENT == "production"
 
 app = FastAPI(
     title="reNews API",
     description="AI-powered technical news aggregator",
     version="1.0.0",
+    lifespan=lifespan,
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
-security = HTTPBasic()
 
 load_dotenv()
 
 
-def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
-    """Basic admin login and password. Set it inside .env file"""
+SECRET_KEY = os.getenv("JWT_SECRET")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Expires in 30 minutes
 
-    typed_user = credentials.username if credentials.username else ""
-    typed_pass = credentials.password if credentials.password else ""
+
+def create_access_token(data: dict):
+    """Generates a JWT token"""
+
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_admin(request: Request):
+    """Dependency to protect API routes (Throws 401 if unauthorized)"""
+
+    token = request.cookies.get("admin_access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("sub") != os.getenv("ADMIN_USER"):
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return payload.get("sub")
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def serve_login(request: Request):
+    """Serves login page"""
+
+    return templates.TemplateResponse(request=request, name="login.html")
+
+
+@app.post("/api/auth/login")
+async def login(
+    response: Response, username: str = Form(...), password: str = Form(...)
+):
+    """Validates credentials and sets an HttpOnly cookie"""
 
     real_user = str(os.getenv("ADMIN_USER"))
     real_pass = str(os.getenv("ADMIN_PASS"))
 
-    if not real_user or not real_pass:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Server misconfiguration: Admin credentials not set in .env",
-        )
+    if not secrets.compare_digest(username, real_user) or not secrets.compare_digest(
+        password, real_pass
+    ):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
 
-    correct_username = secrets.compare_digest(typed_user, real_user)
-    correct_password = secrets.compare_digest(typed_pass, real_pass)
+    access_token = create_access_token(data={"sub": username})
 
-    if not (correct_username and correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
+    response.set_cookie(
+        key="admin_access_token",
+        value=access_token,
+        httponly=True,
+        samesite="lax",
+        secure=IS_PRODUCTION,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return {"message": "Login successful"}
 
-    return credentials.username
+
+@app.post("/api/auth/logout")
+async def logout(response: Response):
+    """Clears the authentication cookie"""
+
+    response.delete_cookie("admin_access_token")
+    return {"message": "Logged out"}
 
 
 @app.get("/api/articles", response_model=PaginatedArticlesResponse)
@@ -110,8 +183,17 @@ async def serve_frontend(request: Request):
 
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_dashboard(request: Request, username: str = Depends(verify_admin)):
-    """Serves the admin panel to add feeds. Protected by verify_admin"""
+async def admin_dashboard(request: Request):
+    """Serves the admin panel. Redirects to /login if not authenticated."""
+
+    token = request.cookies.get("admin_access_token")
+    if not token:
+        return RedirectResponse(url="/login", status_code=302)
+
+    try:
+        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        return RedirectResponse(url="/login", status_code=302)
 
     return templates.TemplateResponse(request=request, name="admin.html")
 
@@ -128,7 +210,7 @@ async def get_feeds(session: AsyncSession = Depends(get_db)):
 async def add_feed(
     feed: FeedCreate,
     session: AsyncSession = Depends(get_db),
-    username: str = Depends(verify_admin),
+    admin: str = Depends(verify_admin),
 ):
     """Adds a new RSS feed to the database. Protected by verify_admin"""
 
@@ -147,9 +229,10 @@ async def add_feed(
 async def delete_feed(
     feed_id: int,
     session: AsyncSession = Depends(get_db),
-    username: str = Depends(verify_admin),
+    admin: str = Depends(verify_admin),
 ):
     """Deletes a feed. Protected by verify_admin"""
+
     feed = await session.get(Feed, feed_id)
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
