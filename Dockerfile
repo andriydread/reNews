@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python init_db.py && uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+CMD ["sh", "-c", "python -m app.init_db && uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers"]

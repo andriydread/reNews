@@ -1,27 +1,30 @@
-import os
-
-from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-load_dotenv()
+from app.core.config import settings
 
-PG_USER = os.getenv("POSTGRES_USER")
-PG_PASS = os.getenv("POSTGRES_PASSWORD")
-PG_HOST = os.getenv("POSTGRES_HOST")
-PG_PORT = os.getenv("POSTGRES_PORT")
-PG_DB = os.getenv("POSTGRES_DB")
+# Create the Database Engine
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    # Settings for db to handle multiple background tasks at once
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+    # Logs SQL queries for debugging
+    echo=False if settings.ENVIRONMENT == "production" else True,
+)
 
-DATABASE_URL = f"postgresql+asyncpg://{PG_USER}:{PG_PASS}@{PG_HOST}:{PG_PORT}/{PG_DB}"
-
-engine = create_async_engine(DATABASE_URL)
-AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+# Create the Session Factory
+AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
 
 
 async def get_db():
-    """Asynchronous database session for FastAPI requests"""
-
+    """
+    Use this to get an active database session.
+    Example: session = await anext(get_db())
+    """
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
+            # Makes sure that session is closed if error occurs
             await session.close()
