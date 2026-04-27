@@ -18,7 +18,7 @@ class FeedManager:
 
     async def fetch_feed_data(self, url: str) -> List[Dict[str, Any]] | None:
         try:
-            # httpx (async) instead of requests (blocking) for speed.
+            # httpx (async) instead of requests for speed
             async with httpx.AsyncClient(
                 headers=self.headers, follow_redirects=True, timeout=15.0
             ) as client:

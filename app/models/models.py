@@ -122,3 +122,18 @@ class ArticleAnalysis(Base):
 
     def __repr__(self) -> str:
         return f"<ArticleAnalysis(category='{self.category}', score={self.score})>"
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(255), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now()
+    )
+
+    def __repr__(self) -> str:
+        return f"<RefreshToken(username='{self.username}', expires_at='{self.expires_at}')>"

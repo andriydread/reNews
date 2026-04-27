@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -14,6 +15,11 @@ def create_access_token(data: dict):
     )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.ALGORITHM)
+
+
+def create_refresh_token():
+    """Generates a secure random refresh token"""
+    return secrets.token_urlsafe(64)
 
 
 def verify_admin(request: Request):

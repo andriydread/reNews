@@ -15,7 +15,7 @@ router = APIRouter()
 async def get_feeds(
     session: AsyncSession = Depends(get_db), admin: str = Depends(verify_admin)
 ):
-    """Returns a list of all managed RSS feeds."""
+    """Returns a list of all managed RSS feeds"""
     result = await session.execute(select(Feed).order_by(Feed.title))
     return result.scalars().all()
 
@@ -26,7 +26,7 @@ async def add_feed(
     session: AsyncSession = Depends(get_db),
     admin: str = Depends(verify_admin),
 ):
-    """Adds a new RSS feed source."""
+    """Adds a new RSS feed source"""
     new_feed = Feed(title=feed.title.strip(), url=feed.url.strip())
     session.add(new_feed)
     try:
@@ -47,7 +47,7 @@ async def delete_feed(
     session: AsyncSession = Depends(get_db),
     admin: str = Depends(verify_admin),
 ):
-    """Removes a feed and all its associated articles."""
+    """Removes a feed and all its associated articles"""
     feed = await session.get(Feed, feed_id)
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")

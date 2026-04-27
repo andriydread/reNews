@@ -9,7 +9,7 @@ engine = create_async_engine(
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,
-    # Logs SQL queries for debugging
+    # Logs SQL queries for debugging in development env
     echo=False if settings.ENVIRONMENT == "production" else True,
 )
 
@@ -19,8 +19,7 @@ AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, autoflush
 
 async def get_db():
     """
-    Use this to get an active database session.
-    Example: session = await anext(get_db())
+    Used to get active database session
     """
     async with AsyncSessionLocal() as session:
         try:

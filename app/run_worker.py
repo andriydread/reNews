@@ -21,9 +21,7 @@ async def sync_all_feeds(session):
         articles_data = await feed_manager.fetch_feed_data(feed.url)
 
         if articles_data:
-            await feed_manager.save_articles_to_db(
-                session, feed.id, articles_data
-            )
+            await feed_manager.save_articles_to_db(session, feed.id, articles_data)
 
 
 async def analyze_pending_articles(session):
@@ -45,7 +43,7 @@ async def analyze_pending_articles(session):
         text = await ai_processor.extract_text_from_url(article.link)
 
         if not text:
-            # If we can't scrape or text not awailable, 'failed' status is appended so app don't try again forever.
+            # If we can't scrape or text not awailable, 'failed' status is appended so app don't try again forever
             failed = ArticleAnalysis(
                 article_id=article.id,
                 summary="Content extraction failed.",

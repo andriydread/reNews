@@ -19,7 +19,7 @@ async def get_articles(
     session: AsyncSession = Depends(get_db),
 ):
     """
-    Returns a paginated list of articles with their AI analysis.
+    Returns a paginated list of articles with their AI analysis
     """
     query = select(Article).options(selectinload(Article.analysis))
     count_query = select(func.count()).select_from(Article)
