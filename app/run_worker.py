@@ -48,7 +48,6 @@ async def analyze_pending_articles(session):
                 article_id=article.id,
                 summary="Content extraction failed.",
                 category="Other",
-                score=0,
                 language="unknown",
                 model_used="none",
             )
@@ -63,7 +62,6 @@ async def analyze_pending_articles(session):
                 article_id=article.id,
                 summary=ai_data.summary,
                 category=ai_data.category,
-                score=ai_data.score,
                 language=ai_data.language,
                 model_used="gemini-3.1-flash-lite",
             )

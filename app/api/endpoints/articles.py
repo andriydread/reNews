@@ -15,7 +15,6 @@ async def get_articles(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     category: ArticleCategory | None = None,
-    min_score: int | None = Query(None, ge=1, le=10),
     session: AsyncSession = Depends(get_db),
 ):
     """
@@ -24,16 +23,12 @@ async def get_articles(
     query = select(Article).options(selectinload(Article.analysis))
     count_query = select(func.count()).select_from(Article)
 
-    if category or min_score is not None:
+    if category:
         query = query.join(Article.analysis)
         count_query = count_query.join(Article.analysis)
 
-        if category:
-            query = query.filter(ArticleAnalysis.category == category)
-            count_query = count_query.filter(ArticleAnalysis.category == category)
-        if min_score is not None:
-            query = query.filter(ArticleAnalysis.score >= min_score)
-            count_query = count_query.filter(ArticleAnalysis.score >= min_score)
+        query = query.filter(ArticleAnalysis.category == category)
+        count_query = count_query.filter(ArticleAnalysis.category == category)
 
     # Order by publication date (newest first)
     query = query.order_by(Article.published_at.desc().nulls_last())

@@ -9,7 +9,6 @@ from app.models.models import ArticleCategory
 class AnalysisResponse(BaseModel):
     summary: str
     category: ArticleCategory
-    score: int
     language: str
 
     # Pydantic setting to allow mapping from SQLAlchemy objects

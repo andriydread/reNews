@@ -111,8 +111,6 @@ class ArticleAnalysis(Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[ArticleCategory] = mapped_column(nullable=False, index=True)
 
-    # score from 1-10
-    score: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     language: Mapped[str] = mapped_column(String(50))
     model_used: Mapped[str] = mapped_column(String(100))
     ai_processed_at: Mapped[datetime] = mapped_column(
@@ -121,7 +119,7 @@ class ArticleAnalysis(Base):
     article: Mapped["Article"] = relationship(back_populates="analysis")
 
     def __repr__(self) -> str:
-        return f"<ArticleAnalysis(category='{self.category}', score={self.score})>"
+        return f"<ArticleAnalysis(category='{self.category}')>"
 
 
 class RefreshToken(Base):

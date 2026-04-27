@@ -9,7 +9,6 @@ reNews is a news aggregator that automates the process of fetching RSS feeds, ex
 - **AI-Driven Insights:**
   - **Summarization:** 1-2 sentence summaries(200 charactrers max).
   - **Categorization:** Automatic sorting into predefined categories.
-  - **Quality Scoring:** 1-10 score based on insightfulness and value.
   - **Language** Autodetect language in which article is written.
 - **Admin Control:** Secure dashboard to manage feed sources.
 - **Modern Stack:** Fully asynchronous Python (FastAPI, SQLAlchemy) with a responsive frontend.

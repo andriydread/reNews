@@ -17,7 +17,6 @@ from app.models.models import ArticleCategory
 class AIAnalysisResult(BaseModel):
     summary: str = Field(description="A concise summary (max 200 chars).")
     category: ArticleCategory = Field(description="The best category for this news.")
-    score: int = Field(description="Value score 1-10 (1=spam/noise, 10=must read).")
     language: str = Field(description="Language of the article.")
 
 
@@ -56,7 +55,7 @@ class AIProcessor:
 
         prompt = f"""
         You are a high-signal news curator. Analyze this article and provide a JSON response.
-        Focus on providing a objective summary and a score based on how informative/important the news is.
+        Focus on providing a objective summary and categorization of the news.
         
         Title: {title}
         Content: {text}

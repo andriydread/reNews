@@ -8,24 +8,20 @@ const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 const pageInfo = document.getElementById("pageInfo");
 const catFilter = document.getElementById("categoryFilter");
-const scoreFilter = document.getElementById("scoreFilter");
 const sizeFilter = document.getElementById("sizeFilter");
 
 function loadMemory() {
   const savedCat = localStorage.getItem("reNews_category");
-  const savedScore = localStorage.getItem("reNews_score");
   const savedSize = localStorage.getItem("reNews_size");
   const savedPage = localStorage.getItem("reNews_page");
 
   if (savedCat) catFilter.value = savedCat;
-  if (savedScore) scoreFilter.value = savedScore;
   if (savedSize) sizeFilter.value = savedSize;
   if (savedPage) currentPage = parseInt(savedPage);
 }
 
 function saveMemory() {
   localStorage.setItem("reNews_category", catFilter.value);
-  localStorage.setItem("reNews_score", scoreFilter.value);
   localStorage.setItem("reNews_size", sizeFilter.value);
   localStorage.setItem("reNews_page", currentPage);
 }
@@ -39,7 +35,6 @@ async function fetchArticles() {
   let url = `/api/articles?page=${currentPage}&size=${sizeFilter.value}`;
   if (catFilter.value)
     url += `&category=${encodeURIComponent(catFilter.value)}`;
-  if (scoreFilter.value) url += `&min_score=${scoreFilter.value}`;
 
   try {
     const response = await fetch(url);
@@ -59,7 +54,6 @@ async function fetchArticles() {
       const summary = article.analysis
         ? article.analysis.summary
         : "AI Analysis pending...";
-      const score = article.analysis ? article.analysis.score : "?";
       const category = article.analysis
         ? article.analysis.category
         : "Uncategorized";
@@ -70,7 +64,6 @@ async function fetchArticles() {
                     <div class="p-5 flex-grow">
                         <div class="flex justify-between items-start mb-3">
                             <span class="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded">${category}</span>
-                            <span class="text-sm font-bold ${score >= 8 ? "text-green-600" : "text-gray-500"}">🔥 ${score}/10</span>
                         </div>
                         <a href="${article.link}" target="_blank" class="block mt-1 text-lg font-bold text-gray-900 hover:text-blue-600 leading-tight mb-2">
                             ${article.title}
@@ -107,10 +100,6 @@ catFilter.addEventListener("change", () => {
   currentPage = 1;
   fetchArticles();
 });
-scoreFilter.addEventListener("change", () => {
-  currentPage = 1;
-  fetchArticles();
-});
 sizeFilter.addEventListener("change", () => {
   currentPage = 1;
   fetchArticles();
@@ -129,7 +118,6 @@ nextBtn.addEventListener("click", () => {
 // Attach to window so the HTML button can call it
 window.resetFilters = function () {
   catFilter.value = "";
-  scoreFilter.value = "";
   currentPage = 1;
   fetchArticles();
 };
