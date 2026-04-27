@@ -30,7 +30,7 @@ async def analyze_pending_articles(session):
         select(Article)
         .options(selectinload(Article.analysis))
         .filter(~Article.analysis.has())
-        .limit(20)
+        .limit(50)
     )
 
     result = await session.execute(query)
@@ -76,14 +76,21 @@ async def analyze_pending_articles(session):
 
 async def worker_run():
     """Main entry point for the worker cycle."""
+    print("Worker started...")
     async with AsyncSessionLocal() as session:
         try:
             # Get new links
+            print("Syncing feeds...")
             await sync_all_feeds(session)
             # Process them with AI
+            print("Analyzing pending articles...")
             await analyze_pending_articles(session)
-        except Exception:
-            pass
+            print("Worker cycle complete.")
+        except Exception as e:
+            print(f"Worker failed with error: {e}")
+            import traceback
+
+            traceback.print_exc()
 
 
 if __name__ == "__main__":

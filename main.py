@@ -5,9 +5,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.run_worker import worker_run
 from app.web.views import router as web_router
 
@@ -41,6 +44,10 @@ app = FastAPI(
     docs_url=None if settings.ENVIRONMENT == "production" else "/docs",
     redoc_url=None if settings.ENVIRONMENT == "production" else "/redoc",
 )
+
+# Rate limiting configuration
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # Global Exception Handler

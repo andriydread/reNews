@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.security import create_access_token, create_refresh_token
 from app.models.models import RefreshToken
 
@@ -14,7 +15,9 @@ router = APIRouter()
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     response: Response,
     username: str = Form(...),
     password: str = Form(...),
