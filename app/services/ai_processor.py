@@ -1,14 +1,6 @@
 import httpx
 import trafilatura
-from google import genai
-from google.genai import types
 from pydantic import BaseModel, Field
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from app.core.config import settings
 from app.models.models import ArticleCategory
@@ -21,9 +13,15 @@ class AIAnalysisResult(BaseModel):
 
 
 class AIProcessor:
-    def __init__(self):
-        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        self.model_name = settings.GEMINI_MODEL
+    """
+    Article analysis pipeline.
+
+    AI integration is currently removed (previously Gemini). analyze_article
+    returns a placeholder result so articles are still marked as processed.
+    Plug a real provider into analyze_article when one is chosen.
+    """
+
+    model_name = "none"
 
     async def extract_text_from_url(self, url: str) -> str | None:
         try:
@@ -45,38 +43,11 @@ class AIProcessor:
         except Exception:
             return None
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((httpx.NetworkError, httpx.TimeoutException)),
-        reraise=True,
-    )
     async def analyze_article(self, title: str, text: str) -> AIAnalysisResult | None:
-
-        prompt = f"""
-        You are a high-signal news curator. Analyze this article and provide a JSON response.
-        Focus on providing a objective summary and categorization of the news.
-        
-        Title: {title}
-        Content: {text}
-        """
-
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=AIAnalysisResult,
-                    temperature=0.1,  # Low temperature makes AI more factual and less "creative"
-                ),
-            )
-
-            if not response.text:
-                return None
-
-            # Validate what the AI returned
-            return AIAnalysisResult.model_validate_json(response.text)
-
-        except Exception:
-            return None
+        # TODO: replace this placeholder with a real AI call
+        summary = text[:197] + "..." if len(text) > 200 else text
+        return AIAnalysisResult(
+            summary=summary,
+            category=ArticleCategory.OTHER,
+            language="unknown",
+        )

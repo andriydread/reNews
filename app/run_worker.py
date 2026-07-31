@@ -25,7 +25,7 @@ async def sync_all_feeds(session):
 
 
 async def analyze_pending_articles(session):
-    """Finds articles without analysis and runs them through Gemini"""
+    """Finds articles without analysis and runs them through the AI processor"""
     query = (
         select(Article)
         .options(selectinload(Article.analysis))
@@ -63,7 +63,7 @@ async def analyze_pending_articles(session):
                 summary=ai_data.summary,
                 category=ai_data.category,
                 language=ai_data.language,
-                model_used="gemini-3.1-flash-lite",
+                model_used=ai_processor.model_name,
             )
             session.add(analysis)
             await session.commit()

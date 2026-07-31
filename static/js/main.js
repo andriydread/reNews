@@ -1,6 +1,25 @@
 // static/js/main.js
 let currentPage = 1;
 
+// Escape untrusted values (feed titles, AI summaries) before putting them in innerHTML
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+// Only allow http(s) links from feeds
+function safeUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol === "http:" || url.protocol === "https:") return url.href;
+  } catch (e) {}
+  return "#";
+}
+
 const grid = document.getElementById("articlesGrid");
 const loading = document.getElementById("loadingState");
 const empty = document.getElementById("emptyState");
@@ -51,12 +70,14 @@ async function fetchArticles() {
     }
 
     data.items.forEach((article) => {
-      const summary = article.analysis
-        ? article.analysis.summary
-        : "AI Analysis pending...";
-      const category = article.analysis
-        ? article.analysis.category
-        : "Uncategorized";
+      const summary = escapeHtml(
+        article.analysis ? article.analysis.summary : "AI Analysis pending...",
+      );
+      const category = escapeHtml(
+        article.analysis ? article.analysis.category : "Uncategorized",
+      );
+      const title = escapeHtml(article.title);
+      const link = escapeHtml(safeUrl(article.link));
       const date = new Date(article.published_at).toLocaleDateString();
 
       const card = `
@@ -65,14 +86,14 @@ async function fetchArticles() {
                         <div class="flex justify-between items-start mb-3">
                             <span class="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded">${category}</span>
                         </div>
-                        <a href="${article.link}" target="_blank" class="block mt-1 text-lg font-bold text-gray-900 hover:text-blue-600 leading-tight mb-2">
-                            ${article.title}
+                        <a href="${link}" target="_blank" rel="noopener noreferrer" class="block mt-1 text-lg font-bold text-gray-900 hover:text-blue-600 leading-tight mb-2">
+                            ${title}
                         </a>
                         <p class="text-gray-600 text-sm line-clamp-4">${summary}</p>
                     </div>
                     <div class="bg-gray-50 px-5 py-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between">
                         <span>🗓 ${date}</span>
-                        <a href="${article.link}" target="_blank" class="text-blue-600 font-medium hover:underline">Read full article &rarr;</a>
+                        <a href="${link}" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-medium hover:underline">Read full article &rarr;</a>
                     </div>
                 </div>
             `;

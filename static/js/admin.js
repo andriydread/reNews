@@ -7,6 +7,16 @@ const feedList = document.getElementById("feedList");
 const alertBox = document.getElementById("alertBox");
 const loadingFeeds = document.getElementById("loadingFeeds");
 
+// Escape untrusted values before putting them in innerHTML
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 // Utility function to show success/error messages
 function showAlert(message, isError = false) {
   alertBox.textContent = message;
@@ -41,10 +51,10 @@ async function loadFeeds() {
       li.className = "py-3 flex justify-between items-center"; // Make it a flex row
       li.innerHTML = `
         <div class="flex flex-col overflow-hidden">
-            <span class="font-bold text-gray-800">${feed.title}</span>
-            <span class="text-sm text-gray-500 truncate" title="${feed.url}">${feed.url}</span>
+            <span class="font-bold text-gray-800">${escapeHtml(feed.title)}</span>
+            <span class="text-sm text-gray-500 truncate" title="${escapeHtml(feed.url)}">${escapeHtml(feed.url)}</span>
         </div>
-        <button onclick="deleteFeed(${feed.id})" class="ml-4 text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition">
+        <button onclick="deleteFeed(${Number(feed.id)})" class="ml-4 text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition">
             <!-- Trash Can SVG Icon -->
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
         </button>

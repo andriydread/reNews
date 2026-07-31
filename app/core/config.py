@@ -30,10 +30,6 @@ class Settings(BaseSettings):
     ADMIN_USER: str
     ADMIN_PASS: str
 
-    # AI API key and model
-    GEMINI_API_KEY: str
-    GEMINI_MODEL: str = "gemini-3.1-flash-lite-preview"
-
     # Worker config
     USER_AGENT: str = "reNews-Reader/2.0 (+https://github.com/reNews)"
     MAX_CONTENT_LENGTH: int = 15000  # Limit text sent to AI to save tokens
