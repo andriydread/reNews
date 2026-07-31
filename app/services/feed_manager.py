@@ -63,23 +63,32 @@ class FeedManager:
         if not articles:
             return 0
 
-        new_items_count = 0
+        # Dedupe within the batch (feeds occasionally repeat a link) and
+        # insert everything in one round-trip; rowcount is the new-item count
+        # since conflicting links are skipped, not updated.
+        seen: set[str] = set()
+        rows = []
         for article in articles:
-            stmt = (
-                insert(Article)
-                .values(
-                    title=article["title"],
-                    link=article["link"],
-                    published_at=article["published_date"],
-                    feed_id=feed_id,
-                    # rest of fiels use defaults from models.py
-                )
-                .on_conflict_do_nothing(index_elements=["link"])
+            if not article["link"] or article["link"] in seen:
+                continue
+            seen.add(article["link"])
+            rows.append(
+                {
+                    "title": article["title"],
+                    "link": article["link"],
+                    "published_at": article["published_date"],
+                    "feed_id": feed_id,
+                    # rest of fields use defaults from models.py
+                }
             )
 
-            result = await session.execute(stmt)
-            if result.rowcount > 0:
-                new_items_count += 1
+        if not rows:
+            return 0
+
+        result = await session.execute(
+            insert(Article).values(rows).on_conflict_do_nothing(index_elements=["link"])
+        )
+        new_items_count = result.rowcount
 
         await session.execute(
             update(Feed)

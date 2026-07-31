@@ -60,3 +60,16 @@ async def test_save_articles_dedupes_on_link(db_session):
     # the core UPDATE bypasses the identity map — reload from the DB
     await db_session.refresh(feed)
     assert feed.last_fetched_at is not None
+
+
+async def test_save_articles_handles_intra_batch_duplicates(db_session):
+    feed = Feed(title="F2", url="https://feeds2.test/rss")
+    db_session.add(feed)
+    await db_session.flush()
+
+    batch = [
+        {"title": "A", "link": "https://feeds2.test/a", "published_date": None},
+        {"title": "A again", "link": "https://feeds2.test/a", "published_date": None},
+        {"title": "No link", "link": None, "published_date": None},
+    ]
+    assert await FeedManager().save_articles_to_db(db_session, feed.id, batch) == 1
