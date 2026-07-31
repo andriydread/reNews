@@ -27,7 +27,7 @@ async def add_feed(
     admin: str = Depends(verify_admin),
 ):
     """Adds a new RSS feed source"""
-    new_feed = Feed(title=feed.title.strip(), url=feed.url.strip())
+    new_feed = Feed(title=feed.title, url=str(feed.url))
     session.add(new_feed)
     try:
         await session.commit()

@@ -49,3 +49,27 @@ async def test_delete_feed(admin_client, db_session):
 async def test_delete_missing_feed_404(admin_client):
     resp = await admin_client.delete("/api/feeds/999999")
     assert resp.status_code == 404
+
+
+async def test_invalid_feed_input_rejected(admin_client):
+    # non-http(s) / garbage URLs
+    for url in ["not-a-url", "ftp://files.test/feed", "javascript:alert(1)"]:
+        resp = await admin_client.post("/api/feeds", json={"title": "X", "url": url})
+        assert resp.status_code == 422, url
+
+    # blank and oversize titles must be 422s, not DB-level 500s
+    resp = await admin_client.post(
+        "/api/feeds", json={"title": "   ", "url": "https://ok.test/rss"}
+    )
+    assert resp.status_code == 422
+
+    resp = await admin_client.post(
+        "/api/feeds", json={"title": "x" * 501, "url": "https://ok.test/rss"}
+    )
+    assert resp.status_code == 422
+
+    resp = await admin_client.post(
+        "/api/feeds",
+        json={"title": "X", "url": "https://ok.test/" + "a" * 1000},
+    )
+    assert resp.status_code == 422
