@@ -1,9 +1,8 @@
-import jwt
 from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.core.config import settings
+from app.core.security import authenticated_admin
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -24,16 +23,7 @@ async def login_page(request: Request):
 @router.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
     """Admin dashboard"""
-    token = request.cookies.get("admin_access_token")
-    authenticated = False
-    if token:
-        try:
-            jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM])
-            authenticated = True
-        except jwt.PyJWTError:
-            pass
-
-    if not authenticated:
+    if authenticated_admin(request) is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
     return templates.TemplateResponse(request=request, name="admin.html")

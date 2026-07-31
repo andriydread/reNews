@@ -120,3 +120,20 @@ async def test_admin_page_redirects_without_token(client):
 async def test_admin_page_renders_when_logged_in(admin_client):
     resp = await admin_client.get("/admin")
     assert resp.status_code == 200
+
+
+async def test_admin_page_rejects_token_with_wrong_subject(client):
+    # Signed with the right secret but wrong sub — the old inline check in
+    # views.py accepted this; the shared path must not
+    import jwt as pyjwt
+
+    from app.core.config import settings
+
+    forged = pyjwt.encode(
+        {"sub": "not-the-admin", "exp": 4102444800},
+        settings.JWT_SECRET,
+        algorithm="HS256",
+    )
+    client.cookies.set("admin_access_token", forged)
+    resp = await client.get("/admin", follow_redirects=False)
+    assert resp.status_code == 302

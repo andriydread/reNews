@@ -22,27 +22,32 @@ def create_refresh_token():
     return secrets.token_urlsafe(64)
 
 
-def verify_admin(request: Request):
+def authenticated_admin(request: Request) -> str | None:
     """
-    Dependency to protect routes
-    Checks for a valid JWT in the 'admin_access_token' cookie
+    The single JWT-validation path: returns the admin username from the
+    'admin_access_token' cookie, or None if the token is missing/invalid/
+    expired or the subject isn't the configured admin.
     """
     token = request.cookies.get("admin_access_token")
     if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+    if payload.get("sub") != settings.ADMIN_USER:
+        return None
+    return payload["sub"]
+
+
+def verify_admin(request: Request) -> str:
+    """
+    Dependency to protect API routes: 401 unless a valid admin JWT cookie
+    is present. Page routes use authenticated_admin() and redirect instead.
+    """
+    admin = authenticated_admin(request)
+    if admin is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
         )
-    try:
-        payload = jwt.decode(
-            token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM]
-        )
-        if payload.get("sub") != settings.ADMIN_USER:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
-            )
-        return payload.get("sub")
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or invalid",
-        ) from None
+    return admin
