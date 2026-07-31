@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -12,7 +12,7 @@ async def seeded(db_session):
     db_session.add(feed)
     await db_session.flush()
 
-    base = datetime(2026, 7, 1, 12, 0, 0)
+    base = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
     articles = []
     for i in range(5):
         article = Article(

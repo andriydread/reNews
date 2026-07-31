@@ -19,9 +19,8 @@ from app.models.models import RefreshToken
 router = APIRouter()
 
 
-def _now_naive() -> datetime:
-    # Use naive UTC for database compatibility (DateTime columns are naive)
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _cookie_params() -> dict:
@@ -54,7 +53,7 @@ async def _store_refresh_token(db: AsyncSession, token: str, username: str) -> N
         RefreshToken(
             token=hash_refresh_token(token),
             username=username,
-            expires_at=_now_naive()
+            expires_at=_now_utc()
             + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         )
     )
@@ -87,7 +86,7 @@ async def login(
         )
 
     # Opportunistic cleanup: expired rows would otherwise accumulate forever
-    await db.execute(delete(RefreshToken).where(RefreshToken.expires_at < _now_naive()))
+    await db.execute(delete(RefreshToken).where(RefreshToken.expires_at < _now_utc()))
 
     access_token = create_access_token(data={"sub": username})
     refresh_token_str = create_refresh_token()
@@ -117,7 +116,7 @@ async def refresh(
     )
     db_token = result.scalar_one_or_none()
 
-    if not db_token or db_token.expires_at < _now_naive():
+    if not db_token or db_token.expires_at < _now_utc():
         if db_token:
             await db.delete(db_token)
             await db.commit()

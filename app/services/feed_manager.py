@@ -1,6 +1,5 @@
 import logging
-import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 import feedparser
@@ -34,15 +33,13 @@ class FeedManager:
 
             articles = []
             for entry in parsed_data.entries:
+                # feedparser normalizes dates to UTC struct_time; build the
+                # datetime as UTC directly (time.mktime would misread it as
+                # local time and skew by the server's UTC offset)
                 published = None
-                if entry.get("published_parsed"):
-                    published = datetime.fromtimestamp(
-                        time.mktime(entry.published_parsed)
-                    )
-                elif entry.get("updated_parsed"):
-                    published = datetime.fromtimestamp(
-                        time.mktime(entry.updated_parsed)
-                    )
+                parsed = entry.get("published_parsed") or entry.get("updated_parsed")
+                if parsed:
+                    published = datetime(*parsed[:6], tzinfo=timezone.utc)
 
                 articles.append(
                     {
@@ -95,7 +92,7 @@ class FeedManager:
         await session.execute(
             update(Feed)
             .where(Feed.id == feed_id)
-            .values(last_fetched_at=datetime.now())
+            .values(last_fetched_at=datetime.now(timezone.utc))
         )
 
         await session.commit()

@@ -16,8 +16,8 @@ async def _refresh_row(db_session, raw_token):
     ).scalar_one_or_none()
 
 
-def _now_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 async def test_login_wrong_password_rejected(client):
@@ -56,7 +56,7 @@ async def test_login_sets_cookies_and_stores_refresh_token(client, db_session):
     row = await _refresh_row(db_session, refresh)
     assert row is not None
     assert row.username == "testadmin"
-    assert row.expires_at > _now_naive()
+    assert row.expires_at > _now_utc()
     # stored hashed, never raw
     assert row.token != refresh
 
@@ -108,7 +108,7 @@ async def test_refresh_expired_token_rejected_and_deleted(client, db_session):
         RefreshToken(
             token=hash_refresh_token("expired-token"),
             username="testadmin",
-            expires_at=_now_naive() - timedelta(days=1),
+            expires_at=_now_utc() - timedelta(days=1),
         )
     )
     await db_session.commit()

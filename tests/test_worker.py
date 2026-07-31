@@ -89,18 +89,18 @@ async def test_analysis_failure_gives_up_after_retry_window(db_session, monkeypa
     db_session.add(feed)
     await db_session.flush()
 
-    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     old = Article(
         title="Ancient failing article",
         link="https://old.test/ancient",
         feed_id=feed.id,
-        created_at=now_naive - run_worker.ANALYSIS_RETRY_WINDOW - timedelta(hours=1),
+        created_at=now - run_worker.ANALYSIS_RETRY_WINDOW - timedelta(hours=1),
     )
     fresh = Article(
         title="Fresh failing article",
         link="https://old.test/fresh",
         feed_id=feed.id,
-        created_at=now_naive,
+        created_at=now,
     )
     db_session.add_all([old, fresh])
     await db_session.commit()

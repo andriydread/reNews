@@ -101,9 +101,7 @@ async def analyze_pending_articles(session):
             [(article.id, article.title, text) for article, text in batch]
         )
 
-        retry_cutoff = (
-            datetime.now(timezone.utc).replace(tzinfo=None) - ANALYSIS_RETRY_WINDOW
-        )
+        retry_cutoff = datetime.now(timezone.utc) - ANALYSIS_RETRY_WINDOW
         for article, _ in batch:
             ai_data = results.get(article.id)
             if ai_data:

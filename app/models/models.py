@@ -45,7 +45,7 @@ class Feed(Base):
         String(1000), unique=True, nullable=False, index=True
     )
 
-    last_fetched_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    last_fetched_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     articles: Mapped[List["Article"]] = relationship(
         back_populates="feed",
         cascade="all, delete-orphan",  # If we delete a feed, delete its articles too
@@ -79,9 +79,11 @@ class Article(Base):
     # 1 (Like), -1 (Dislike), 0 (None)
     user_vote: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), index=True
+        DateTime(timezone=True), server_default=func.now(), index=True
     )
-    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)
+    published_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
     feed: Mapped["Feed"] = relationship(back_populates="articles")
 
     analysis: Mapped[Optional["ArticleAnalysis"]] = relationship(
@@ -114,7 +116,7 @@ class ArticleAnalysis(Base):
     language: Mapped[str] = mapped_column(String(50))
     model_used: Mapped[str] = mapped_column(String(100))
     ai_processed_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now()
+        DateTime(timezone=True), server_default=func.now()
     )
     article: Mapped["Article"] = relationship(back_populates="analysis")
 
@@ -128,9 +130,9 @@ class RefreshToken(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     token: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     username: Mapped[str] = mapped_column(String(255), index=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now()
+        DateTime(timezone=True), server_default=func.now()
     )
 
     def __repr__(self) -> str:
