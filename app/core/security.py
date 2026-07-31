@@ -45,4 +45,4 @@ def verify_admin(request: Request):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired or invalid",
-        )
+        ) from None

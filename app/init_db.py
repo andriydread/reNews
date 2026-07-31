@@ -1,10 +1,10 @@
 import asyncio
-import sys
 
 from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal, engine
 from app.models.models import Base, Feed
+
 
 async def init_models():
     """Initializes the PostgreSQL database schema and seeds default data"""

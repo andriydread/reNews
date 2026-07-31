@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+# One event loop for the whole run: the session-scoped engine fixture and the
+# per-test asyncpg connections must live on the same loop.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+# E/F pycodestyle+pyflakes, I import order, B bugbear
+select = ["E", "F", "I", "B"]
+# E501: long lines — templates/prompts read better unwrapped
+# B008: `Depends()` in argument defaults is idiomatic FastAPI
+ignore = ["E501", "B008"]

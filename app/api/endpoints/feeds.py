@@ -38,7 +38,7 @@ async def add_feed(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A feed with this URL already exists.",
-        )
+        ) from None
 
 
 @router.delete("/{feed_id}")
