@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,7 +10,10 @@ class Settings(BaseSettings):
     )
 
     PROJECT_NAME: str = "reNews"
-    ENVIRONMENT: str = "development"
+    # Fail closed: a missing/typo'd value must not silently expose /docs,
+    # drop the Secure cookie flag, or enable SQL echo — so the default is
+    # production and typos fail at startup instead of falling through.
+    ENVIRONMENT: Literal["development", "production"] = "production"
 
     # Database Setup
     POSTGRES_USER: str
