@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
@@ -13,6 +14,8 @@ from app.services.feed_manager import FeedManager
 # two worker cycles (timer firing while a slow cycle still runs, or a manual
 # `systemctl start renews-worker`) from processing the same articles twice.
 WORKER_LOCK_KEY = 815_001
+
+logger = logging.getLogger(__name__)
 
 feed_manager = FeedManager()
 ai_processor = AIProcessor()
@@ -93,7 +96,7 @@ async def analyze_pending_articles(session):
 
 async def worker_run():
     """Main entry point for the worker cycle."""
-    print("Worker started...")
+    logger.info("Worker started")
     # The advisory lock lives on its own connection: session-level commits
     # release the session's connection back to the pool, which would strand
     # the lock on a pooled connection if it were taken through the session.
@@ -108,24 +111,23 @@ async def worker_run():
         await lock_conn.commit()
 
         if not locked:
-            print("Another worker cycle is already running; skipping.")
+            logger.info("Another worker cycle is already running; skipping")
             return
 
         try:
             async with AsyncSessionLocal() as session:
                 try:
                     # Get new links
-                    print("Syncing feeds...")
+                    logger.info("Syncing feeds")
                     await sync_all_feeds(session)
                     # Process them with AI
-                    print("Analyzing pending articles...")
+                    logger.info("Analyzing pending articles")
                     await analyze_pending_articles(session)
-                    print("Worker cycle complete.")
-                except Exception as e:
-                    print(f"Worker failed with error: {e}")
-                    import traceback
-
-                    traceback.print_exc()
+                    logger.info("Worker cycle complete")
+                except Exception:
+                    # exception() logs the traceback; the DB URL (with password)
+                    # is never interpolated into the message
+                    logger.exception("Worker cycle failed")
         finally:
             await lock_conn.execute(
                 text("SELECT pg_advisory_unlock(:key)"), {"key": WORKER_LOCK_KEY}
@@ -134,4 +136,7 @@ async def worker_run():
 
 
 if __name__ == "__main__":
+    from app.core.logging_config import setup_logging
+
+    setup_logging()
     asyncio.run(worker_run())

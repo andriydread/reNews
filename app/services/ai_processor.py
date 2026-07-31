@@ -62,7 +62,10 @@ class AIProcessor:
 
             return text[: settings.MAX_CONTENT_LENGTH]
 
-        except Exception:
+        except Exception as exc:
+            # info, not warning: paywalled/JS-only pages fail routinely and
+            # get a sentinel row — this is telemetry, not an error signal
+            logger.info("could not extract %s: %s", url, exc)
             return None
 
     async def analyze_articles(

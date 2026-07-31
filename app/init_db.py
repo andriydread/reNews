@@ -1,17 +1,20 @@
 import asyncio
+import logging
 
 from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal, engine
 from app.models.models import Base, Feed
 
+logger = logging.getLogger(__name__)
+
 
 async def init_models():
     """Initializes the PostgreSQL database schema and seeds default data"""
-    print("Initializing database...")
+    logger.info("Initializing database")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("Database schema created.")
+    logger.info("Database schema created")
 
     # Seed default feeds
     async with AsyncSessionLocal() as session:
@@ -24,10 +27,13 @@ async def init_models():
             )
             session.add(hn_feed)
             await session.commit()
-            print(f"Added default feed: {hn_feed.title}")
+            logger.info("Added default feed: %s", hn_feed.title)
         else:
-            print("Default feed already exists.")
-    print("Initialization complete.")
+            logger.info("Default feed already exists")
+    logger.info("Initialization complete")
 
 if __name__ == "__main__":
+    from app.core.logging_config import setup_logging
+
+    setup_logging()
     asyncio.run(init_models())

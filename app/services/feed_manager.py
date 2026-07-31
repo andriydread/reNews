@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime
 from typing import Any, Dict, List
@@ -10,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.models import Article, Feed
+
+logger = logging.getLogger(__name__)
 
 
 class FeedManager:
@@ -49,7 +52,8 @@ class FeedManager:
 
             return articles
 
-        except Exception:
+        except Exception as exc:
+            logger.warning("failed to fetch feed %s: %s", url, exc)
             return None
 
     async def save_articles_to_db(

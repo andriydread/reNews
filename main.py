@@ -9,7 +9,10 @@ from slowapi.errors import RateLimitExceeded
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.limiter import limiter
+from app.core.logging_config import setup_logging
 from app.web.views import router as web_router
+
+setup_logging()
 
 # The feed/AI worker runs in its own process (renews-worker.service, fired by
 # renews-worker.timer) — see app/run_worker.py. The web app only serves HTTP.
