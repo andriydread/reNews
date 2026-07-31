@@ -2,16 +2,62 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.limiter import limiter
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    hash_refresh_token,
+)
 from app.models.models import RefreshToken
 
 router = APIRouter()
+
+
+def _now_naive() -> datetime:
+    # Use naive UTC for database compatibility (DateTime columns are naive)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _cookie_params() -> dict:
+    return {
+        "httponly": True,
+        "samesite": "lax",
+        "secure": settings.ENVIRONMENT == "production",
+    }
+
+
+def _set_session_cookies(response: Response, access_token: str, refresh_token: str):
+    params = _cookie_params()
+    response.set_cookie(
+        key="admin_access_token",
+        value=access_token,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        **params,
+    )
+    response.set_cookie(
+        key="admin_refresh_token",
+        value=refresh_token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        **params,
+    )
+
+
+async def _store_refresh_token(db: AsyncSession, token: str, username: str) -> None:
+    """Persist the SHA-256 of a refresh token; the raw value never hits the DB."""
+    db.add(
+        RefreshToken(
+            token=hash_refresh_token(token),
+            username=username,
+            expires_at=_now_naive()
+            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        )
+    )
 
 
 @router.post("/login")
@@ -40,84 +86,61 @@ async def login(
             detail="Incorrect username or password",
         )
 
+    # Opportunistic cleanup: expired rows would otherwise accumulate forever
+    await db.execute(delete(RefreshToken).where(RefreshToken.expires_at < _now_naive()))
+
     access_token = create_access_token(data={"sub": username})
     refresh_token_str = create_refresh_token()
-    
-    # Use naive UTC for database compatibility if DateTime is not timezone-aware
-    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
-        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-    )
-
-    # Save refresh token to DB
-    new_refresh_token = RefreshToken(
-        token=refresh_token_str, username=username, expires_at=expires_at
-    )
-    db.add(new_refresh_token)
+    await _store_refresh_token(db, refresh_token_str, username)
     await db.commit()
 
-    cookie_params = {
-        "httponly": True,
-        "samesite": "lax",
-        "secure": True if settings.ENVIRONMENT == "production" else False,
-    }
-
-    response.set_cookie(
-        key="admin_access_token",
-        value=access_token,
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        **cookie_params,
-    )
-
-    response.set_cookie(
-        key="admin_refresh_token",
-        value=refresh_token_str,
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        **cookie_params,
-    )
-
+    _set_session_cookies(response, access_token, refresh_token_str)
     return {"message": "Login successful"}
 
 
 @router.post("/refresh")
+@limiter.limit("20/minute")
 async def refresh(
     request: Request, response: Response, db: AsyncSession = Depends(get_db)
 ):
-    """Exchanges a valid refresh token for a new access token"""
+    """Exchanges a valid refresh token for a new access token, rotating the refresh token"""
     refresh_token_str = request.cookies.get("admin_refresh_token")
     if not refresh_token_str:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing"
         )
 
-    # Check if token exists in DB and is not expired
     result = await db.execute(
-        select(RefreshToken).where(RefreshToken.token == refresh_token_str)
+        select(RefreshToken).where(
+            RefreshToken.token == hash_refresh_token(refresh_token_str)
+        )
     )
     db_token = result.scalar_one_or_none()
 
-    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
-    
-    if not db_token or db_token.expires_at < now_naive:
+    if not db_token or db_token.expires_at < _now_naive():
         if db_token:
             await db.delete(db_token)
             await db.commit()
-        response.delete_cookie("admin_refresh_token")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token"
+        # Build the 401 by hand: raising HTTPException makes FastAPI discard
+        # the injected response, so delete_cookie on it never reaches the
+        # browser and the stale cookie would be re-sent forever.
+        error = JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Invalid or expired refresh token"},
         )
+        error.delete_cookie("admin_refresh_token")
+        error.delete_cookie("admin_access_token")
+        return error
 
-    # Generate new access token
+    # Rotation: the presented token is consumed, a fresh one replaces it —
+    # a stolen refresh token stops working as soon as the owner uses theirs.
+    await db.delete(db_token)
+    new_refresh_token = create_refresh_token()
+    await _store_refresh_token(db, new_refresh_token, db_token.username)
+    await db.commit()
+
     new_access_token = create_access_token(data={"sub": db_token.username})
-
-    response.set_cookie(
-        key="admin_access_token",
-        value=new_access_token,
-        httponly=True,
-        samesite="lax",
-        secure=True if settings.ENVIRONMENT == "production" else False,
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-
+    _set_session_cookies(response, new_access_token, new_refresh_token)
     return {"message": "Token refreshed"}
 
 
@@ -128,7 +151,11 @@ async def logout(
     """Clears the admin session cookies and removes the refresh token from DB"""
     refresh_token_str = request.cookies.get("admin_refresh_token")
     if refresh_token_str:
-        await db.execute(delete(RefreshToken).where(RefreshToken.token == refresh_token_str))
+        await db.execute(
+            delete(RefreshToken).where(
+                RefreshToken.token == hash_refresh_token(refresh_token_str)
+            )
+        )
         await db.commit()
 
     response.delete_cookie("admin_access_token")

@@ -2,7 +2,18 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
+from app.core.security import hash_refresh_token
 from app.models.models import RefreshToken
+
+
+async def _refresh_row(db_session, raw_token):
+    return (
+        await db_session.execute(
+            select(RefreshToken).where(
+                RefreshToken.token == hash_refresh_token(raw_token)
+            )
+        )
+    ).scalar_one_or_none()
 
 
 def _now_naive() -> datetime:
@@ -42,13 +53,12 @@ async def test_login_sets_cookies_and_stores_refresh_token(client, db_session):
     refresh = client.cookies.get("admin_refresh_token")
     assert refresh
 
-    row = (
-        await db_session.execute(
-            select(RefreshToken).where(RefreshToken.token == refresh)
-        )
-    ).scalar_one()
+    row = await _refresh_row(db_session, refresh)
+    assert row is not None
     assert row.username == "testadmin"
     assert row.expires_at > _now_naive()
+    # stored hashed, never raw
+    assert row.token != refresh
 
 
 async def test_refresh_issues_new_access_token(admin_client):
@@ -70,6 +80,24 @@ async def test_refresh_issues_new_access_token(admin_client):
     assert payload["sub"] == "testadmin"
 
 
+async def test_refresh_rotates_token(admin_client, db_session):
+    old_refresh = admin_client.cookies.get("admin_refresh_token")
+
+    resp = await admin_client.post("/api/auth/refresh")
+    assert resp.status_code == 200
+    new_refresh = admin_client.cookies.get("admin_refresh_token")
+    assert new_refresh and new_refresh != old_refresh
+
+    # old row consumed, new row present
+    assert await _refresh_row(db_session, old_refresh) is None
+    assert await _refresh_row(db_session, new_refresh) is not None
+
+    # replaying the consumed token must fail
+    admin_client.cookies.set("admin_refresh_token", old_refresh)
+    resp = await admin_client.post("/api/auth/refresh")
+    assert resp.status_code == 401
+
+
 async def test_refresh_without_cookie_rejected(client):
     resp = await client.post("/api/auth/refresh")
     assert resp.status_code == 401
@@ -78,7 +106,7 @@ async def test_refresh_without_cookie_rejected(client):
 async def test_refresh_expired_token_rejected_and_deleted(client, db_session):
     db_session.add(
         RefreshToken(
-            token="expired-token",
+            token=hash_refresh_token("expired-token"),
             username="testadmin",
             expires_at=_now_naive() - timedelta(days=1),
         )
@@ -88,13 +116,12 @@ async def test_refresh_expired_token_rejected_and_deleted(client, db_session):
     client.cookies.set("admin_refresh_token", "expired-token")
     resp = await client.post("/api/auth/refresh")
     assert resp.status_code == 401
+    # the 401 must actually clear the stale cookie (HTTPException used to
+    # discard the delete_cookie header)
+    set_cookies = ";".join(resp.headers.get_list("set-cookie"))
+    assert "admin_refresh_token" in set_cookies
 
-    remaining = (
-        await db_session.execute(
-            select(RefreshToken).where(RefreshToken.token == "expired-token")
-        )
-    ).scalar_one_or_none()
-    assert remaining is None
+    assert await _refresh_row(db_session, "expired-token") is None
 
 
 async def test_logout_deletes_refresh_token(admin_client, db_session):
@@ -103,12 +130,7 @@ async def test_logout_deletes_refresh_token(admin_client, db_session):
     resp = await admin_client.post("/api/auth/logout")
     assert resp.status_code == 200
 
-    row = (
-        await db_session.execute(
-            select(RefreshToken).where(RefreshToken.token == refresh)
-        )
-    ).scalar_one_or_none()
-    assert row is None
+    assert await _refresh_row(db_session, refresh) is None
 
 
 async def test_admin_page_redirects_without_token(client):

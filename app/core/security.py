@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -20,6 +21,16 @@ def create_access_token(data: dict):
 def create_refresh_token():
     """Generates a secure random refresh token"""
     return secrets.token_urlsafe(64)
+
+
+def hash_refresh_token(token: str) -> str:
+    """
+    Refresh tokens are stored as SHA-256 hashes: read access to the DB must
+    not be worth 30 days of admin access. The raw token exists only in the
+    cookie; sha256 is fine here because the input is 64 random bytes
+    (unbruteforceable), unlike a human password.
+    """
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def authenticated_admin(request: Request) -> str | None:
