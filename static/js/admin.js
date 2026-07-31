@@ -7,6 +7,22 @@ const feedList = document.getElementById("feedList");
 const alertBox = document.getElementById("alertBox");
 const loadingFeeds = document.getElementById("loadingFeeds");
 
+// Session-aware fetch: the access token dies after 60 min. On a 401, try one
+// token refresh (rotates the refresh cookie server-side) and retry; if the
+// refresh is also rejected the session is truly over — back to login.
+async function apiFetch(url, options = {}) {
+  let response = await fetch(url, options);
+  if (response.status !== 401) return response;
+
+  const refreshed = await fetch("/api/auth/refresh", { method: "POST" });
+  if (!refreshed.ok) {
+    window.location.href = "/login";
+    // unreachable after redirect, but keeps callers' error handling sane
+    return response;
+  }
+  return fetch(url, options);
+}
+
 // Escape untrusted values before putting them in innerHTML
 function escapeHtml(value) {
   return String(value)
@@ -35,7 +51,7 @@ async function loadFeeds() {
   loadingFeeds.classList.remove("hidden");
 
   try {
-    const response = await fetch("/api/feeds");
+    const response = await apiFetch("/api/feeds");
     const feeds = await response.json();
 
     loadingFeeds.classList.add("hidden");
@@ -77,7 +93,7 @@ async function deleteFeed(feedId) {
     return;
 
   try {
-    const response = await fetch(`/api/feeds/${feedId}`, {
+    const response = await apiFetch(`/api/feeds/${feedId}`, {
       method: "DELETE",
       credentials: "same-origin",
     });
@@ -108,7 +124,7 @@ feedForm.addEventListener("submit", async (e) => {
   try {
     // Because the page is protected by Basic Auth, the browser automatically
     // includes the correct Username/Password headers in this fetch request!
-    const response = await fetch("/api/feeds", {
+    const response = await apiFetch("/api/feeds", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
