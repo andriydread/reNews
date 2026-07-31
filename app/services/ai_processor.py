@@ -7,6 +7,7 @@ import trafilatura
 from pydantic import BaseModel, Field, ValidationError
 
 from app.core.config import settings
+from app.core.safe_fetch import fetch_url_safely
 from app.models.models import ArticleCategory
 
 logger = logging.getLogger(__name__)
@@ -47,10 +48,11 @@ class AIProcessor:
 
     def http_client(self) -> httpx.AsyncClient:
         """A client configured for article fetching; the worker shares one
-        across a whole scrape phase instead of one per request."""
+        across a whole scrape phase instead of one per request. Redirects are
+        followed by fetch_url_safely so each hop gets an SSRF check."""
         return httpx.AsyncClient(
             headers={"User-Agent": settings.USER_AGENT},
-            follow_redirects=True,
+            follow_redirects=False,
             timeout=20.0,
         )
 
@@ -59,10 +61,10 @@ class AIProcessor:
     ) -> str | None:
         try:
             if client is not None:
-                response = await client.get(url)
+                response = await fetch_url_safely(client, url)
             else:
                 async with self.http_client() as own_client:
-                    response = await own_client.get(url)
+                    response = await fetch_url_safely(own_client, url)
             response.raise_for_status()
 
             text = trafilatura.extract(response.text, include_comments=False)

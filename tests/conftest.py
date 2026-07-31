@@ -26,6 +26,19 @@ from main import app  # noqa: E402
 TEST_DB = "renews_test"
 
 
+@pytest.fixture(autouse=True)
+def public_dns(monkeypatch):
+    """Fake DNS for the SSRF guard: fixture hostnames (feeds.test, ...) don't
+    exist, so resolve everything to a public address. Tests that need a
+    private resolution monkeypatch _resolve_host again themselves."""
+    from app.core import safe_fetch
+
+    async def fake_resolve(host):
+        return ["93.184.216.34"]
+
+    monkeypatch.setattr(safe_fetch, "_resolve_host", fake_resolve)
+
+
 @pytest.fixture(scope="session")
 async def engine():
     """(Re)create the throwaway test database, build the schema once per run."""
