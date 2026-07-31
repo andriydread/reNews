@@ -25,7 +25,8 @@ WorkingDirectory=/home/reNews
 # Without this, worker print/log output sits in Python's stdout buffer and
 # never reaches the journal (docker set it in the old Dockerfile).
 Environment=PYTHONUNBUFFERED=1
-# Create missing tables / seed the default feed before serving (idempotent).
+# Apply pending schema migrations, then seed defaults (both idempotent).
+ExecStartPre=/home/reNews/.venv/bin/alembic upgrade head
 ExecStartPre=/home/reNews/.venv/bin/python -m app.init_db
 # 127.0.0.1 only — Caddy terminates TLS and proxies renews.andriicodes.dev here.
 # --forwarded-allow-ips limits X-Forwarded-For trust to Caddy on localhost, so
