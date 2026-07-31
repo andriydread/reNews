@@ -24,6 +24,15 @@ async def test_login_wrong_username_rejected(client):
     assert resp.status_code == 401
 
 
+async def test_login_non_ascii_credentials_rejected_not_500(client):
+    # str-based compare_digest raises TypeError on non-ASCII; must be a
+    # clean 401, not an internal error
+    resp = await client.post(
+        "/api/auth/login", data={"username": "ädmin", "password": "pässwörd"}
+    )
+    assert resp.status_code == 401
+
+
 async def test_login_sets_cookies_and_stores_refresh_token(client, db_session):
     resp = await client.post(
         "/api/auth/login", data={"username": "testadmin", "password": "testpass"}

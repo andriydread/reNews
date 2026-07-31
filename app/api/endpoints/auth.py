@@ -24,9 +24,17 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticates the admin and sets HttpOnly, Secure cookies for access and refresh tokens"""
-    if not secrets.compare_digest(
-        username, settings.ADMIN_USER
-    ) or not secrets.compare_digest(password, settings.ADMIN_PASS):
+    # Compare as UTF-8 bytes (str compare_digest raises TypeError on
+    # non-ASCII input → 500), and evaluate BOTH comparisons unconditionally:
+    # short-circuiting would skip the password check on a wrong username,
+    # an observable difference that enables username enumeration.
+    valid_user = secrets.compare_digest(
+        username.encode(), settings.ADMIN_USER.encode()
+    )
+    valid_pass = secrets.compare_digest(
+        password.encode(), settings.ADMIN_PASS.encode()
+    )
+    if not (valid_user & valid_pass):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
