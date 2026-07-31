@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
@@ -14,6 +15,11 @@ from app.services.feed_manager import FeedManager
 # two worker cycles (timer firing while a slow cycle still runs, or a manual
 # `systemctl start renews-worker`) from processing the same articles twice.
 WORKER_LOCK_KEY = 815_001
+
+# Analysis failures (CLI down, unparseable reply) are retried on later cycles,
+# but not forever: once an article is this old it gets a sentinel row so a
+# batch of permanently-failing articles can't clog the pending queue.
+ANALYSIS_RETRY_WINDOW = timedelta(days=3)
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +41,13 @@ async def sync_all_feeds(session):
 
 async def analyze_pending_articles(session):
     """Finds articles without analysis and runs them through the AI processor"""
+    # Newest first: with limit(50) and no ordering, a backlog of failing
+    # articles could starve fresh ones from ever being analyzed.
     query = (
         select(Article)
         .options(selectinload(Article.analysis))
         .filter(~Article.analysis.has())
+        .order_by(Article.id.desc())
         .limit(50)
     )
 
@@ -79,6 +88,9 @@ async def analyze_pending_articles(session):
             [(article.id, article.title, text) for article, text in batch]
         )
 
+        retry_cutoff = (
+            datetime.now(timezone.utc).replace(tzinfo=None) - ANALYSIS_RETRY_WINDOW
+        )
         for article, _ in batch:
             ai_data = results.get(article.id)
             if ai_data:
@@ -89,6 +101,21 @@ async def analyze_pending_articles(session):
                         category=ai_data.category,
                         language=ai_data.language,
                         model_used=ai_processor.model_name,
+                    )
+                )
+            elif article.created_at and article.created_at < retry_cutoff:
+                # failed on every cycle for the whole retry window — give up
+                logger.warning(
+                    "giving up analysis of article %s after %s", article.id,
+                    ANALYSIS_RETRY_WINDOW,
+                )
+                session.add(
+                    ArticleAnalysis(
+                        article_id=article.id,
+                        summary="Analysis failed.",
+                        category="Other",
+                        language="unknown",
+                        model_used="none",
                     )
                 )
         await session.commit()
