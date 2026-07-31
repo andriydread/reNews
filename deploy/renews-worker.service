@@ -17,7 +17,7 @@ Type=oneshot
 User=root
 WorkingDirectory=/home/reNews
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/home/reNews/.venv/bin/python -m app.run_worker
+ExecStart=/home/reNews/.venv/bin/python -m app.worker.runner
 # A cycle can legitimately be slow: sequential scraping plus one claude CLI
 # call per 10-article batch. Kill it well before the next timer firing.
 TimeoutStartSec=25min

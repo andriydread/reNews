@@ -19,10 +19,10 @@ help:
 
 check: compile lint test
 
-# main.py at the root plus every app subpackage level — a syntax error anywhere
+# Every app subpackage level — a syntax error anywhere
 # must fail the gate before it can crash the live service.
 compile:
-	$(PY) -m py_compile main.py app/*.py app/*/*.py app/*/*/*.py
+	$(PY) -m py_compile app/*.py app/*/*.py app/*/*/*.py
 
 lint:
 	$(PY) -m ruff check .
@@ -33,12 +33,12 @@ test:
 	$(PY) -m pytest -q
 
 run:
-	$(PY) -m uvicorn main:app --host 127.0.0.1 --port 8000
+	$(PY) -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 # The dev loop for the live service: edit files, then `make restart`.
 # Compile-checks first so a typo cannot take the site down, health-checks after.
 restart:
-	$(PY) -m py_compile main.py app/*.py app/*/*.py app/*/*/*.py
+	$(PY) -m py_compile app/*.py app/*/*.py app/*/*/*.py
 	systemctl restart renews
 	@# init_db runs in ExecStartPre, so the port takes a few seconds to bind
 	@for i in $$(seq 1 15); do \

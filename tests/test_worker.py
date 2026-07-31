@@ -1,8 +1,8 @@
 from sqlalchemy import select, text
 
-from app import run_worker
 from app.models.models import Article, ArticleAnalysis, ArticleCategory, Feed
 from app.services.ai_processor import AIAnalysisResult
+from app.worker import runner as run_worker
 
 
 async def _seed_article(db_session, link="https://w.test/a") -> Article:

@@ -15,7 +15,7 @@ from app.web.views import router as web_router
 setup_logging()
 
 # The feed/AI worker runs in its own process (renews-worker.service, fired by
-# renews-worker.timer) — see app/run_worker.py. The web app only serves HTTP.
+# renews-worker.timer) — see app/worker/runner.py. The web app only serves HTTP.
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="AI-powered technical news aggregator",

@@ -20,8 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # noqa: E4
 
 from app.core.config import settings  # noqa: E402
 from app.core.database import get_db  # noqa: E402
+from app.main import app  # noqa: E402
 from app.models.models import Base  # noqa: E402
-from main import app  # noqa: E402
 
 TEST_DB = "renews_test"
 
