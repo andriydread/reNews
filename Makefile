@@ -2,7 +2,7 @@
 # `make PY=python3 test` if needed.
 PY ?= .venv/bin/python
 
-.PHONY: help check compile lint test run restart logs status
+.PHONY: help check compile lint test run restart logs status migrate css
 
 help:
 	@echo "Develop:"
@@ -34,6 +34,14 @@ test:
 
 run:
 	$(PY) -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# Apply pending schema migrations (renews.service also does this on start)
+migrate:
+	.venv/bin/alembic -c alembic/alembic.ini upgrade head
+
+# Regenerate the static Tailwind build after changing classes in templates/JS
+css:
+	tailwindcss -c static/tailwind.config.js -i static/css/tailwind.src.css -o static/css/tailwind.css --minify
 
 # The dev loop for the live service: edit files, then `make restart`.
 # Compile-checks first so a typo cannot take the site down, health-checks after.

@@ -1,3 +1,13 @@
+# Dev/test tooling — not needed on the production service. Install with:
+#   .venv/bin/pip install --group dev
+[dependency-groups]
+dev = [
+    "pytest==8.4.2",
+    "pytest-asyncio==1.2.0",
+    "respx==0.22.0",
+    "ruff==0.14.14",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
