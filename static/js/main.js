@@ -131,12 +131,11 @@ nextBtn.addEventListener("click", () => {
   fetchArticles();
 });
 
-// Attach to window so the HTML button can call it
-window.resetFilters = function () {
+document.getElementById("resetFiltersBtn").addEventListener("click", () => {
   catFilter.value = "";
   currentPage = 1;
   fetchArticles();
-};
+});
 
 // Start
 loadMemory();

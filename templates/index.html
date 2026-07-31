@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>reNews - AI Aggregator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/tailwind.css?v=1" />
     <link rel="stylesheet" href="/static/css/style.css" />
-    <script defer src="/static/js/main.js?v=4"></script>
+    <script defer src="/static/js/main.js?v=5"></script>
   </head>
   <body class="bg-stone-50 text-gray-800 font-sans antialiased">
     <!-- Navbar -->
@@ -93,7 +93,7 @@
       <div id="emptyState" class="hidden text-center py-20 text-gray-500">
         <p class="text-xl">No articles found matching these filters.</p>
         <button
-          onclick="resetFilters()"
+          id="resetFiltersBtn"
           class="mt-4 text-blue-600 hover:underline"
         >
           Clear Filters

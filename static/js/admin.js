@@ -161,5 +161,11 @@ feedForm.addEventListener("submit", async (e) => {
   }
 });
 
+// Logout button (was an inline onclick; CSP forbids those now)
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await fetch("/api/auth/logout", { method: "POST" });
+  window.location.href = "/login";
+});
+
 // Start
 loadFeeds();
