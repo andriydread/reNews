@@ -45,15 +45,25 @@ class AIProcessor:
     def __init__(self):
         self.model_name = f"claude-{settings.AI_MODEL}"
 
-    async def extract_text_from_url(self, url: str) -> str | None:
+    def http_client(self) -> httpx.AsyncClient:
+        """A client configured for article fetching; the worker shares one
+        across a whole scrape phase instead of one per request."""
+        return httpx.AsyncClient(
+            headers={"User-Agent": settings.USER_AGENT},
+            follow_redirects=True,
+            timeout=20.0,
+        )
+
+    async def extract_text_from_url(
+        self, url: str, client: httpx.AsyncClient | None = None
+    ) -> str | None:
         try:
-            async with httpx.AsyncClient(
-                headers={"User-Agent": settings.USER_AGENT},
-                follow_redirects=True,
-                timeout=20.0,
-            ) as client:
+            if client is not None:
                 response = await client.get(url)
-                response.raise_for_status()
+            else:
+                async with self.http_client() as own_client:
+                    response = await own_client.get(url)
+            response.raise_for_status()
 
             text = trafilatura.extract(response.text, include_comments=False)
 

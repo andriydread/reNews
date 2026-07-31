@@ -21,6 +21,10 @@ WORKER_LOCK_KEY = 815_001
 # batch of permanently-failing articles can't clog the pending queue.
 ANALYSIS_RETRY_WINDOW = timedelta(days=3)
 
+# Concurrent article fetches during the scrape phase — polite to third-party
+# sites while no longer serializing 50 * (up to 20s timeout) requests.
+SCRAPE_CONCURRENCY = 5
+
 logger = logging.getLogger(__name__)
 
 feed_manager = FeedManager()
@@ -57,27 +61,36 @@ async def analyze_pending_articles(session):
     if not pending:
         return
 
-    # Scrape phase: collect article text, sentinel-mark pages we can't extract
+    # Scrape phase: bounded-concurrency fetches sharing one HTTP client
+    semaphore = asyncio.Semaphore(SCRAPE_CONCURRENCY)
+
+    async with ai_processor.http_client() as http_client:
+
+        async def scrape(article: Article) -> tuple[Article, str | None]:
+            async with semaphore:
+                page_text = await ai_processor.extract_text_from_url(
+                    article.link, client=http_client
+                )
+                return article, page_text
+
+        scraped = await asyncio.gather(*(scrape(article) for article in pending))
+
     to_analyze: list[tuple[Article, str]] = []
-    for article in pending:
-        text = await ai_processor.extract_text_from_url(article.link)
-
-        if not text:
+    for article, page_text in scraped:
+        if not page_text:
             # If we can't scrape or text not awailable, 'failed' status is appended so app don't try again forever
-            failed = ArticleAnalysis(
-                article_id=article.id,
-                summary="Content extraction failed.",
-                category="Other",
-                language="unknown",
-                model_used="none",
+            session.add(
+                ArticleAnalysis(
+                    article_id=article.id,
+                    summary="Content extraction failed.",
+                    category="Other",
+                    language="unknown",
+                    model_used="none",
+                )
             )
-            session.add(failed)
-            await session.commit()
-            continue
-
-        to_analyze.append((article, text))
-        # temp limit
-        await asyncio.sleep(1)
+        else:
+            to_analyze.append((article, page_text))
+    await session.commit()
 
     # Analysis phase: one claude CLI call per batch. Articles missing from a
     # batch result stay pending and are retried on the next cycle.

@@ -26,7 +26,7 @@ async def _analysis_for(db_session, article_id):
 async def test_extraction_failure_writes_sentinel(db_session, monkeypatch):
     article = await _seed_article(db_session)
 
-    async def no_text(url):
+    async def no_text(url, client=None):
         return None
 
     monkeypatch.setattr(run_worker.ai_processor, "extract_text_from_url", no_text)
@@ -41,7 +41,7 @@ async def test_extraction_failure_writes_sentinel(db_session, monkeypatch):
 async def test_successful_analysis_saved(db_session, monkeypatch):
     article = await _seed_article(db_session)
 
-    async def some_text(url):
+    async def some_text(url, client=None):
         return "Extracted article body"
 
     async def fake_analyze(items):
@@ -68,7 +68,7 @@ async def test_successful_analysis_saved(db_session, monkeypatch):
 async def test_failed_analysis_stays_pending(db_session, monkeypatch):
     article = await _seed_article(db_session)
 
-    async def some_text(url):
+    async def some_text(url, client=None):
         return "Extracted article body"
 
     async def fake_analyze(items):
@@ -105,7 +105,7 @@ async def test_analysis_failure_gives_up_after_retry_window(db_session, monkeypa
     db_session.add_all([old, fresh])
     await db_session.commit()
 
-    async def some_text(url):
+    async def some_text(url, client=None):
         return "body"
 
     async def fake_analyze(items):
@@ -133,7 +133,7 @@ async def test_pending_query_prefers_newest(db_session, monkeypatch):
 
     seen_order = []
 
-    async def tracking_extract(url):
+    async def tracking_extract(url, client=None):
         seen_order.append(url)
         return None  # extraction failure path, no AI involved
 
