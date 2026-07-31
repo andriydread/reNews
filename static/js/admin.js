@@ -23,14 +23,38 @@ async function apiFetch(url, options = {}) {
   return fetch(url, options);
 }
 
-// Escape untrusted values before putting them in innerHTML
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+// Static markup only — never interpolate data into this
+const TRASH_ICON_SVG =
+  '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
+
+// Build one feed row with DOM APIs: feed data goes in via textContent, so it
+// is never parsed as HTML.
+function buildFeedRow(feed) {
+  const li = document.createElement("li");
+  li.className = "py-3 flex justify-between items-center"; // Make it a flex row
+
+  const info = document.createElement("div");
+  info.className = "flex flex-col overflow-hidden";
+
+  const title = document.createElement("span");
+  title.className = "font-bold text-gray-800";
+  title.textContent = feed.title;
+
+  const url = document.createElement("span");
+  url.className = "text-sm text-gray-500 truncate";
+  url.title = feed.url;
+  url.textContent = feed.url;
+
+  info.append(title, url);
+
+  const del = document.createElement("button");
+  del.className =
+    "ml-4 text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition";
+  del.innerHTML = TRASH_ICON_SVG;
+  del.addEventListener("click", () => deleteFeed(feed.id));
+
+  li.append(info, del);
+  return li;
 }
 
 // Utility function to show success/error messages
@@ -62,21 +86,7 @@ async function loadFeeds() {
       return;
     }
 
-    feeds.forEach((feed) => {
-      const li = document.createElement("li");
-      li.className = "py-3 flex justify-between items-center"; // Make it a flex row
-      li.innerHTML = `
-        <div class="flex flex-col overflow-hidden">
-            <span class="font-bold text-gray-800">${escapeHtml(feed.title)}</span>
-            <span class="text-sm text-gray-500 truncate" title="${escapeHtml(feed.url)}">${escapeHtml(feed.url)}</span>
-        </div>
-        <button onclick="deleteFeed(${Number(feed.id)})" class="ml-4 text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded transition">
-            <!-- Trash Can SVG Icon -->
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-        </button>
-    `;
-      feedList.appendChild(li);
-    });
+    feeds.forEach((feed) => feedList.appendChild(buildFeedRow(feed)));
   } catch (error) {
     loadingFeeds.classList.add("hidden");
     feedList.innerHTML =

@@ -1,16 +1,6 @@
 // static/js/main.js
 let currentPage = 1;
 
-// Escape untrusted values (feed titles, AI summaries) before putting them in innerHTML
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
 // Only allow http(s) links from feeds
 function safeUrl(value) {
   try {
@@ -18,6 +8,31 @@ function safeUrl(value) {
     if (url.protocol === "http:" || url.protocol === "https:") return url.href;
   } catch (e) {}
   return "#";
+}
+
+const cardTemplate = document.getElementById("articleCardTemplate");
+
+// Clone the <template> and fill slots via textContent/href — untrusted feed
+// data is never parsed as HTML, so escaping is structural, not a discipline.
+function buildCard(article) {
+  const card = cardTemplate.content.cloneNode(true);
+  const link = safeUrl(article.link);
+
+  card.querySelector('[data-slot="category"]').textContent = article.analysis
+    ? article.analysis.category
+    : "Uncategorized";
+
+  const title = card.querySelector('[data-slot="title"]');
+  title.textContent = article.title;
+  title.href = link;
+
+  card.querySelector('[data-slot="summary"]').textContent = article.analysis
+    ? article.analysis.summary
+    : "AI Analysis pending...";
+  card.querySelector('[data-slot="date"]').textContent =
+    "🗓 " + new Date(article.published_at).toLocaleDateString();
+  card.querySelector('[data-slot="readmore"]').href = link;
+  return card;
 }
 
 const grid = document.getElementById("articlesGrid");
@@ -69,36 +84,9 @@ async function fetchArticles() {
       return;
     }
 
-    data.items.forEach((article) => {
-      const summary = escapeHtml(
-        article.analysis ? article.analysis.summary : "AI Analysis pending...",
-      );
-      const category = escapeHtml(
-        article.analysis ? article.analysis.category : "Uncategorized",
-      );
-      const title = escapeHtml(article.title);
-      const link = escapeHtml(safeUrl(article.link));
-      const date = new Date(article.published_at).toLocaleDateString();
-
-      const card = `
-                <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition border border-gray-100 flex flex-col">
-                    <div class="p-5 flex-grow">
-                        <div class="flex justify-between items-start mb-3">
-                            <span class="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded">${category}</span>
-                        </div>
-                        <a href="${link}" target="_blank" rel="noopener noreferrer" class="block mt-1 text-lg font-bold text-gray-900 hover:text-blue-600 leading-tight mb-2">
-                            ${title}
-                        </a>
-                        <p class="text-gray-600 text-sm line-clamp-4">${summary}</p>
-                    </div>
-                    <div class="bg-gray-50 px-5 py-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between">
-                        <span>🗓 ${date}</span>
-                        <a href="${link}" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-medium hover:underline">Read full article &rarr;</a>
-                    </div>
-                </div>
-            `;
-      grid.innerHTML += card;
-    });
+    const fragment = document.createDocumentFragment();
+    data.items.forEach((article) => fragment.appendChild(buildCard(article)));
+    grid.appendChild(fragment);
 
     // Calculate total pages (e.g., 27 items / 10 per page = 3 pages)
     const totalPages = Math.ceil(data.total / parseInt(sizeFilter.value)) || 1;

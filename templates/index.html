@@ -6,7 +6,7 @@
     <title>reNews - AI Aggregator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/css/style.css" />
-    <script defer src="/static/js/main.js?v=2"></script>
+    <script defer src="/static/js/main.js?v=3"></script>
   </head>
   <body class="bg-stone-50 text-gray-800 font-sans antialiased">
     <!-- Navbar -->
@@ -103,6 +103,42 @@
         id="articlesGrid"
         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
       ></div>
+
+      <!-- Card markup lives here; main.js clones it and fills the slots via
+           textContent/href, so feed data is never parsed as HTML. -->
+      <template id="articleCardTemplate">
+        <div
+          class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition border border-gray-100 flex flex-col"
+        >
+          <div class="p-5 flex-grow">
+            <div class="flex justify-between items-start mb-3">
+              <span
+                data-slot="category"
+                class="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded"
+              ></span>
+            </div>
+            <a
+              data-slot="title"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="block mt-1 text-lg font-bold text-gray-900 hover:text-blue-600 leading-tight mb-2"
+            ></a>
+            <p data-slot="summary" class="text-gray-600 text-sm line-clamp-4"></p>
+          </div>
+          <div
+            class="bg-gray-50 px-5 py-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between"
+          >
+            <span data-slot="date"></span>
+            <a
+              data-slot="readmore"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-blue-600 font-medium hover:underline"
+              >Read full article &rarr;</a
+            >
+          </div>
+        </div>
+      </template>
 
       <!-- Pagination -->
       <div
