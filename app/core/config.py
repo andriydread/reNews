@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     ADMIN_USER: str
     ADMIN_PASS: str
 
+    # AI config (claude CLI, subscription auth on the host)
+    CLAUDE_BIN: str = "claude"
+    AI_MODEL: str = "haiku"
+    AI_BATCH_SIZE: int = 10
+    AI_TIMEOUT_SECONDS: int = 300
+
     # Worker config
     USER_AGENT: str = "reNews-Reader/2.0 (+https://github.com/reNews)"
     MAX_CONTENT_LENGTH: int = 15000  # Limit text sent to AI to save tokens
