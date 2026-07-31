@@ -1,13 +1,18 @@
 import asyncio
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
-from app.core.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal, engine
 from app.models.models import Article, ArticleAnalysis, Feed
 from app.services.ai_processor import AIProcessor
 from app.services.feed_manager import FeedManager
+
+# Arbitrary but stable app-wide id for the Postgres advisory lock that keeps
+# two worker cycles (timer firing while a slow cycle still runs, or a manual
+# `systemctl start renews-worker`) from processing the same articles twice.
+WORKER_LOCK_KEY = 815_001
 
 feed_manager = FeedManager()
 ai_processor = AIProcessor()
@@ -89,20 +94,43 @@ async def analyze_pending_articles(session):
 async def worker_run():
     """Main entry point for the worker cycle."""
     print("Worker started...")
-    async with AsyncSessionLocal() as session:
-        try:
-            # Get new links
-            print("Syncing feeds...")
-            await sync_all_feeds(session)
-            # Process them with AI
-            print("Analyzing pending articles...")
-            await analyze_pending_articles(session)
-            print("Worker cycle complete.")
-        except Exception as e:
-            print(f"Worker failed with error: {e}")
-            import traceback
+    # The advisory lock lives on its own connection: session-level commits
+    # release the session's connection back to the pool, which would strand
+    # the lock on a pooled connection if it were taken through the session.
+    async with engine.connect() as lock_conn:
+        locked = (
+            await lock_conn.execute(
+                text("SELECT pg_try_advisory_lock(:key)"), {"key": WORKER_LOCK_KEY}
+            )
+        ).scalar()
+        # Advisory locks are session-scoped, not transaction-scoped: commit so
+        # the connection doesn't sit idle-in-transaction for the whole cycle.
+        await lock_conn.commit()
 
-            traceback.print_exc()
+        if not locked:
+            print("Another worker cycle is already running; skipping.")
+            return
+
+        try:
+            async with AsyncSessionLocal() as session:
+                try:
+                    # Get new links
+                    print("Syncing feeds...")
+                    await sync_all_feeds(session)
+                    # Process them with AI
+                    print("Analyzing pending articles...")
+                    await analyze_pending_articles(session)
+                    print("Worker cycle complete.")
+                except Exception as e:
+                    print(f"Worker failed with error: {e}")
+                    import traceback
+
+                    traceback.print_exc()
+        finally:
+            await lock_conn.execute(
+                text("SELECT pg_advisory_unlock(:key)"), {"key": WORKER_LOCK_KEY}
+            )
+            await lock_conn.commit()
 
 
 if __name__ == "__main__":

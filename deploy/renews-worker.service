@@ -1,0 +1,23 @@
+# One worker cycle: sync feeds, then analyze pending articles via the claude
+# CLI. Fired by renews-worker.timer; run one manually with
+# `systemctl start renews-worker`. A Postgres advisory lock inside worker_run
+# makes overlapping cycles a no-op, so manual + timed runs can't collide.
+#
+# Install (both files):
+#   cp deploy/renews-worker.* /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now renews-worker.timer
+
+[Unit]
+Description=reNews feed sync + AI analysis worker
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/reNews
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/reNews/.venv/bin/python -m app.run_worker
+# A cycle can legitimately be slow: sequential scraping plus one claude CLI
+# call per 10-article batch. Kill it well before the next timer firing.
+TimeoutStartSec=25min

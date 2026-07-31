@@ -36,10 +36,9 @@ class Settings(BaseSettings):
     AI_BATCH_SIZE: int = 10
     AI_TIMEOUT_SECONDS: int = 300
 
-    # Worker config
+    # Worker config (cadence lives in deploy/renews-worker.timer)
     USER_AGENT: str = "reNews-Reader/2.0 (+https://github.com/reNews)"
     MAX_CONTENT_LENGTH: int = 15000  # Limit text sent to AI to save tokens
-    WORKER_INTERVAL_MINUTES: int = 30
 
 
 settings = Settings()

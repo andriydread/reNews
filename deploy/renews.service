@@ -1,0 +1,41 @@
+# systemd unit for the reNews app. The app runs on the host (so the worker can
+# shell out to the host's `claude` CLI subscription login); Postgres stays in
+# Docker (docker-compose.yml, db service only, bound to 127.0.0.1:5432).
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now renews
+#
+# Config/secrets live in /home/reNews/.env, which pydantic-settings reads from
+# the working directory — nothing secret in this unit. The .env file is
+# git-ignored and chmod 600.
+
+[Unit]
+Description=reNews news aggregator
+After=network.target docker.service
+Wants=docker.service
+# Bound Restart=always so a genuinely broken build (crash on startup) gives up
+# instead of respawning forever. These live in [Unit], not [Service].
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/reNews
+# Without this, worker print/log output sits in Python's stdout buffer and
+# never reaches the journal (docker set it in the old Dockerfile).
+Environment=PYTHONUNBUFFERED=1
+# Create missing tables / seed the default feed before serving (idempotent).
+ExecStartPre=/home/reNews/.venv/bin/python -m app.init_db
+# 127.0.0.1 only — Caddy terminates TLS and proxies renews.andriicodes.dev here.
+# --forwarded-allow-ips limits X-Forwarded-For trust to Caddy on localhost, so
+# the login rate limit keys on the real client IP and can't be spoofed.
+ExecStart=/home/reNews/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1
+# "always", not "on-failure": a clean exit is still an outage — anything that
+# stops the process leaves every request 502ing behind Caddy.
+Restart=always
+RestartSec=3
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

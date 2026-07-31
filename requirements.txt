@@ -1,7 +1,6 @@
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.13.0
-APScheduler==3.11.2
 asyncpg==0.31.0
 babel==2.18.0
 beautifulsoup4==4.14.3

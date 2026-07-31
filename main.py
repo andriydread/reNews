@@ -1,7 +1,5 @@
-from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -11,35 +9,13 @@ from slowapi.errors import RateLimitExceeded
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.run_worker import worker_run
 from app.web.views import router as web_router
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Handles startup and shutdown events for the FastAPI application.
-    """
-    scheduler = AsyncIOScheduler()
-    # Schedule the worker to run at regular intervals
-    scheduler.add_job(
-        worker_run,
-        "interval",
-        minutes=settings.WORKER_INTERVAL_MINUTES,
-        id="rss_worker_job",
-    )
-    # Trigger initial run on startup to ensure we have fresh data
-    scheduler.add_job(worker_run, id="startup_sync")
-
-    scheduler.start()
-    yield
-    scheduler.shutdown()
-
-
+# The feed/AI worker runs in its own process (renews-worker.service, fired by
+# renews-worker.timer) — see app/run_worker.py. The web app only serves HTTP.
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="AI-powered technical news aggregator",
-    lifespan=lifespan,
     # Hide docs in production for security
     docs_url=None if settings.ENVIRONMENT == "production" else "/docs",
     redoc_url=None if settings.ENVIRONMENT == "production" else "/redoc",

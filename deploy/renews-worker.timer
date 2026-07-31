@@ -1,0 +1,15 @@
+# Fires renews-worker.service on a fixed cadence. This file is where the
+# worker interval lives now (the old WORKER_INTERVAL_MINUTES env var is gone —
+# systemd timers can't read .env).
+
+[Unit]
+Description=Run the reNews worker every 30 minutes
+
+[Timer]
+# First run shortly after boot, then 30 min after each service activation.
+OnBootSec=2min
+OnUnitActiveSec=30min
+Unit=renews-worker.service
+
+[Install]
+WantedBy=timers.target

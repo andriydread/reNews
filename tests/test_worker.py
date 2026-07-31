@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app import run_worker
 from app.models.models import Article, ArticleAnalysis, ArticleCategory, Feed
@@ -80,3 +80,66 @@ async def test_failed_analysis_stays_pending(db_session, monkeypatch):
 
     # no row: the article is retried on the next cycle
     assert await _analysis_for(db_session, article.id) is None
+
+
+async def test_worker_run_skips_when_lock_held(engine, monkeypatch):
+    """A second cycle started while one runs must be a no-op (advisory lock)."""
+    called = False
+
+    async def fake_sync(session):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(run_worker, "sync_all_feeds", fake_sync)
+
+    # Hold the lock from an unrelated connection, as a running cycle would
+    async with engine.connect() as holder:
+        got = (
+            await holder.execute(
+                text("SELECT pg_try_advisory_lock(:key)"),
+                {"key": run_worker.WORKER_LOCK_KEY},
+            )
+        ).scalar()
+        assert got is True
+        await holder.commit()
+        try:
+            await run_worker.worker_run()
+        finally:
+            await holder.execute(
+                text("SELECT pg_advisory_unlock(:key)"),
+                {"key": run_worker.WORKER_LOCK_KEY},
+            )
+            await holder.commit()
+
+    assert called is False
+
+
+async def test_worker_run_executes_and_releases_lock(engine, monkeypatch):
+    calls = []
+
+    async def fake_sync(session):
+        calls.append("sync")
+
+    async def fake_analyze(session):
+        calls.append("analyze")
+
+    monkeypatch.setattr(run_worker, "sync_all_feeds", fake_sync)
+    monkeypatch.setattr(run_worker, "analyze_pending_articles", fake_analyze)
+
+    await run_worker.worker_run()
+    assert calls == ["sync", "analyze"]
+
+    # the lock must be free again afterwards
+    async with engine.connect() as conn:
+        got = (
+            await conn.execute(
+                text("SELECT pg_try_advisory_lock(:key)"),
+                {"key": run_worker.WORKER_LOCK_KEY},
+            )
+        ).scalar()
+        assert got is True
+        await conn.execute(
+            text("SELECT pg_advisory_unlock(:key)"),
+            {"key": run_worker.WORKER_LOCK_KEY},
+        )
+        await conn.commit()
