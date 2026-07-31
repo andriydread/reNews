@@ -77,6 +77,13 @@ async function fetchArticles() {
     loading.classList.add("hidden");
 
     if (data.items.length === 0) {
+      // A stale page restored from localStorage (or a shrunken result set)
+      // lands past the last page — snap back instead of showing "no articles"
+      if (currentPage > 1 && data.total > 0) {
+        currentPage = 1;
+        fetchArticles();
+        return;
+      }
       empty.classList.remove("hidden");
       prevBtn.disabled = currentPage === 1;
       nextBtn.disabled = true;
